@@ -1,0 +1,18 @@
+# Normalize line endings regardless of each contributor's core.autocrlf setting.
+* text=auto eol=lf
+
+# Windows-only scripts must keep CRLF or they break cmd.exe.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Never munge these.
+*.jar      binary
+*.so       binary
+*.a        binary
+*.apk      binary
+*.aab      binary
+*.png      binary
+*.jpg      binary
+*.webp     binary
+*.jks      binary
+*.keystore binary
