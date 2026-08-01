@@ -1,0 +1,47 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+local.properties
+
+# Android build outputs
+# NOTE: deliberately no bare `release/` or `out/` — those match at any depth and would
+# silently swallow `src/release/` source sets. `build/` already covers real outputs.
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+captures/
+
+# Native build
+.cxx/
+*.o
+*.a
+# Compiled natives are build output; they live in the AAR, never in the tree.
+*.so
+
+# Signing / publishing material — never commit
+*.jks
+*.keystore
+*.p12
+*.pem
+*.asc
+*.gpg
+keystore.properties
+signing.properties
+
+# IDE
+.idea/
+*.iml
+.kotlin/
+
+# Device / tooling artifacts pulled in during testing.
+# No `*.log` — a captured logcat may legitimately become a sanitised test fixture.
+frida-server*
+*.hprof
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
