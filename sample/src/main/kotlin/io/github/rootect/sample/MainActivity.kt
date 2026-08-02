@@ -33,6 +33,6 @@ class MainActivity : Activity() {
         appendLine(runCatching { Rootect.nativePing() }.fold({ it }, { "FAILED — $it" }))
 
         appendLine()
-        appendLine("Detection signals arrive in later phases.")
+        appendLine("No detection signals yet.")
     }
 }
