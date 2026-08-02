@@ -1,0 +1,49 @@
+package io.github.rootect
+
+/** The catalogue of things Rootect can find. */
+public enum class SignalId(
+    public val category: Category,
+    public val confidence: Confidence,
+) {
+
+    // ── Root artefacts ────────────────────────────────────────────────────────
+    SU_BINARY(Category.ROOT, Confidence.STRONG),
+    MAGISK_ARTIFACT(Category.ROOT, Confidence.STRONG),
+    ROOT_MANAGER_PACKAGE(Category.ROOT, Confidence.MODERATE),
+    SYSTEM_PARTITION_WRITABLE(Category.ROOT, Confidence.STRONG),
+
+    /** init's mount table lists mounts ours does not — Magisk hid them from us only. */
+    MOUNT_NAMESPACE_DIVERGENCE(Category.ROOT, Confidence.CONCLUSIVE),
+
+    /** prctl(0xDEADBEEF) returned data. A stock kernel rejects it with EINVAL. */
+    KERNEL_ROOT_SYSCALL(Category.ROOT, Confidence.CONCLUSIVE),
+
+    // ── OS posture ────────────────────────────────────────────────────────────
+    TEST_KEYS_BUILD(Category.ENVIRONMENT, Confidence.WEAK),
+    SELINUX_PERMISSIVE(Category.ENVIRONMENT, Confidence.STRONG),
+    BOOTLOADER_UNLOCKED(Category.ENVIRONMENT, Confidence.STRONG),
+
+    /** The same property gives two different values depending on how it is read. */
+    PROPERTY_TAMPERED(Category.ENVIRONMENT, Confidence.STRONG),
+
+    // ── Instrumentation ───────────────────────────────────────────────────────
+    FRIDA_LIBRARY_MAPPED(Category.HOOK, Confidence.STRONG),
+    FRIDA_THREAD_PRESENT(Category.HOOK, Confidence.STRONG),
+    FRIDA_SERVER_REACHABLE(Category.HOOK, Confidence.MODERATE),
+    XPOSED_FRAMEWORK_PRESENT(Category.HOOK, Confidence.STRONG),
+
+    /** Our machine code in memory no longer matches the .so on disk. */
+    CODE_SECTION_MODIFIED(Category.HOOK, Confidence.CONCLUSIVE),
+
+    // ── Debuggers ─────────────────────────────────────────────────────────────
+    DEBUGGER_ATTACHED(Category.DEBUG, Confidence.MODERATE),
+    TRACER_ATTACHED(Category.DEBUG, Confidence.STRONG),
+
+    // ── App integrity ─────────────────────────────────────────────────────────
+    SIGNATURE_MISMATCH(Category.TAMPER, Confidence.CONCLUSIVE),
+    DEBUGGABLE_BUILD(Category.TAMPER, Confidence.MODERATE),
+    UNTRUSTED_INSTALLER(Category.TAMPER, Confidence.WEAK),
+
+    // ── Emulation ─────────────────────────────────────────────────────────────
+    EMULATOR_FINGERPRINT(Category.EMULATOR, Confidence.STRONG),
+}
