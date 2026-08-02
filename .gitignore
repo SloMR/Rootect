@@ -32,7 +32,10 @@ keystore.properties
 signing.properties
 
 # IDE
-.idea/
+# `.idea/*` rather than `.idea/` — git cannot un-ignore a path inside an ignored
+# directory, and shared run configurations are worth tracking.
+.idea/*
+!.idea/runConfigurations/
 *.iml
 .kotlin/
 
