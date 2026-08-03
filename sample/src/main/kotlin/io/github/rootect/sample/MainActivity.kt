@@ -6,9 +6,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import io.github.rootect.Rootect
 
-/**
- * Placeholder dashboard.
- */
+/** Placeholder dashboard. */
 class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,14 +23,20 @@ class MainActivity : Activity() {
     }
 
     private fun report(): CharSequence = buildString {
+        val report = Rootect.analyze(this@MainActivity)
+
         appendLine("Rootect — sample")
         appendLine("─".repeat(28))
         appendLine()
-
-        append("native bridge:  ")
-        appendLine(runCatching { Rootect.nativePing() }.fold({ it }, { "FAILED — $it" }))
-
+        appendLine("risk:    ${report.risk}")
+        appendLine("score:   ${report.score}")
+        appendLine("signals: ${report.signals.size}")
         appendLine()
-        appendLine("No detection signals yet.")
+
+        if (report.signals.isEmpty()) {
+            appendLine("No detection signals yet.")
+        } else {
+            report.signals.forEach { appendLine("• ${it.id}  [${it.confidence}]") }
+        }
     }
 }
