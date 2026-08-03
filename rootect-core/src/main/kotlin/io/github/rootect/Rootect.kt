@@ -2,14 +2,8 @@ package io.github.rootect
 
 import android.content.Context
 
-/**
- * Entry point for Rootect.
- */
+/** Entry point for Rootect. */
 public object Rootect {
-
-    init {
-        System.loadLibrary("rootect")
-    }
 
     /** Runs every enabled detector and returns the evidence. */
     @JvmStatic
@@ -18,9 +12,7 @@ public object Rootect {
         return RootectReport(signals.toList())
     }
 
+    /** Convenience over [analyze] for callers who only want a boolean. */
     @JvmStatic
     public fun isRooted(context: Context): Boolean = analyze(context).isRooted
-
-    /** Temporary linkage probe. */
-    public external fun nativePing(): String
 }

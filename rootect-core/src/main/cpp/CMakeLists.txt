@@ -6,6 +6,8 @@ add_library(rootect SHARED
         rootect.cpp
 )
 
+target_compile_features(rootect PRIVATE cxx_std_17)
+
 target_compile_options(rootect PRIVATE
         # Only the JNI entry points carry JNIEXPORT (visibility("default")).
         -fvisibility=hidden
