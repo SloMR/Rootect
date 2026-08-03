@@ -8,7 +8,7 @@
 // decrypts it into a stack buffer on use, and wipes that buffer when it goes out of scope.
 //
 // Whether the plaintext truly stays out of the binary is a quality-of-implementation
-// matter, not a language guarantee — tools/check-no-plaintext.sh is the gate that proves it.
+// matter, not a language guarantee — scripts/check-no-plaintext.sh is the gate that proves it.
 
 #include <cstddef>
 #include <utility>
