@@ -15,13 +15,17 @@ class MainActivity : Activity() {
         val view = TextView(this).apply {
             setPadding(48, 96, 48, 48)
             textSize = 16f
-            setTextIsSelectable(true)
             text = report()
+            // Tap anywhere to re-scan, so conditions can be changed on a running app and
+            // the effect seen without a restart.
+            minHeight = resources.displayMetrics.heightPixels
+            setOnClickListener { text = report() }
         }
 
         setContentView(ScrollView(this).apply { addView(view) })
     }
 
+    /** Runs a scan and renders it. */
     private fun report(): CharSequence = buildString {
         val report = Rootect.analyze(this@MainActivity)
 
