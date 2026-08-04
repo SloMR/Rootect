@@ -28,15 +28,20 @@ class MainActivity : Activity() {
         appendLine("Rootect — sample")
         appendLine("─".repeat(28))
         appendLine()
-        appendLine("risk:    ${report.risk}")
-        appendLine("score:   ${report.score}")
-        appendLine("signals: ${report.signals.size}")
+        appendLine("risk:     ${report.risk}")
+        appendLine("score:    ${report.score}")
+        appendLine("rooted:   ${report.isRooted}")
         appendLine()
 
         if (report.signals.isEmpty()) {
-            appendLine("No detection signals yet.")
+            appendLine("No signals.")
         } else {
             report.signals.forEach { appendLine("• ${it.id}  [${it.confidence}]") }
+        }
+
+        if (report.inconclusiveChecks > 0) {
+            appendLine()
+            appendLine("${report.inconclusiveChecks} check(s) could not complete.")
         }
     }
 }
