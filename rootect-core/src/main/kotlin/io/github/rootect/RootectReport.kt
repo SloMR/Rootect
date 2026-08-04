@@ -3,11 +3,7 @@ package io.github.rootect
 /** What an analysis found. */
 public class RootectReport internal constructor(
     public val signals: List<Signal>,
-    /**
-     * Checks that could not complete — a denied read, or a /proc line too long to parse.
-     * Not evidence: a clean device reports zero, but a non-zero count means "found
-     * nothing" is weaker than it looks.
-     */
+    /** Checks that could not complete. Not evidence, but "found nothing" is weaker if set. */
     public val inconclusiveChecks: Int = 0,
 ) {
     /** 0..100 across every category. */
@@ -17,6 +13,7 @@ public class RootectReport internal constructor(
     /** Same maths as [score], one category only. */
     public fun scoreFor(category: Category): Int = ScoringEngine.scoreFor(signals, category)
 
+    /** Evidence from one category. */
     public fun signalsIn(category: Category): List<Signal> =
         signals.filter { it.category == category }
 

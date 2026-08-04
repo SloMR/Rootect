@@ -16,6 +16,7 @@ internal object PackageDetector {
         "com.koushikdutta.superuser",
     )
 
+    /** Emits ROOT_MANAGER_PACKAGE if any known manager app is installed. */
     fun detect(context: Context): List<Signal> {
         val pm = context.packageManager
         val found = MANAGERS.filter { pkg ->

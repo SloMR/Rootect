@@ -5,6 +5,7 @@ import kotlin.math.roundToInt
 /** Combines signal confidences into a 0..100 score. */
 internal object ScoringEngine {
 
+    /** Combined score for every signal given. */
     fun score(signals: Collection<Signal>): Int {
         if (signals.isEmpty()) return 0
 
@@ -17,6 +18,7 @@ internal object ScoringEngine {
         return ((1.0 - complement) * 100).roundToInt().coerceIn(0, 100)
     }
 
+    /** Combined score for one category only. */
     fun scoreFor(signals: Collection<Signal>, category: Category): Int =
         score(signals.filter { it.category == category })
 }
