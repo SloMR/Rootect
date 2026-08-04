@@ -11,10 +11,9 @@ public object Rootect {
         val signals = mutableListOf<Signal>()
         var inconclusive = 0
 
-        // Native checks never throw, but a missing or unloadable library would — and a
-        // detection library must not be the reason a host app dies.
+        // Each detector is isolated: a detection library must not be why a host app dies.
         try {
-            val scan = NativeBridge.scanRoot()
+            val scan = NativeBridge.scan()
             signals += NativeSignals.decode(scan[0])
             inconclusive += scan[1]
         } catch (_: Throwable) {
@@ -23,6 +22,12 @@ public object Rootect {
 
         try {
             signals += PackageDetector.detect(context)
+        } catch (_: Throwable) {
+            inconclusive++
+        }
+
+        try {
+            signals += RuntimeDetector.detect()
         } catch (_: Throwable) {
             inconclusive++
         }

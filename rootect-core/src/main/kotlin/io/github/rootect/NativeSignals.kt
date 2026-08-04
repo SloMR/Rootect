@@ -11,10 +11,16 @@ internal object NativeSignals {
         (1 shl 3) to SignalId.KERNEL_ROOT_SYSCALL,
         (1 shl 4) to SignalId.BOOTLOADER_UNLOCKED,
         (1 shl 5) to SignalId.TEST_KEYS_BUILD,
+        (1 shl 6) to SignalId.FRIDA_LIBRARY_MAPPED,
+        (1 shl 7) to SignalId.FRIDA_THREAD_PRESENT,
+        (1 shl 8) to SignalId.XPOSED_FRAMEWORK_PRESENT,
+        (1 shl 9) to SignalId.CODE_SECTION_MODIFIED,
+        (1 shl 10) to SignalId.TRACER_ATTACHED,
     )
 
     val count: Int get() = bits.size
 
+    /** Turns a native flags word into signals. */
     fun decode(flags: Int): List<Signal> =
         bits.filter { (bit, _) -> flags and bit != 0 }.map { (_, id) -> Signal(id) }
 }
