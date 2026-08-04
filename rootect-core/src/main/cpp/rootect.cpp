@@ -4,10 +4,10 @@
 #include "obfuscate.h"
 #include "proc.h"
 
-// Runs every native root check. Returns {flags, inconclusive}.
+// Runs every native check. Returns {flags, inconclusive}.
 extern "C" JNIEXPORT jintArray JNICALL
-Java_io_github_rootect_NativeBridge_scanRoot(JNIEnv* env, jobject) {
-    auto outcome = rootect::scan_root();
+Java_io_github_rootect_NativeBridge_scan(JNIEnv* env, jobject) {
+    auto outcome = rootect::scan_all();
 
     jint out[2] = {static_cast<jint>(outcome.flags), static_cast<jint>(outcome.inconclusive)};
     jintArray arr = env->NewIntArray(2);
@@ -16,10 +16,8 @@ Java_io_github_rootect_NativeBridge_scanRoot(JNIEnv* env, jobject) {
 }
 
 #ifndef NDEBUG
-// Debug builds only. Reads /proc/self/status through an obfuscated path and looks for a
-// line the file always has, proving both halves at once: the raw syscalls work on this
+// Debug only. Proves both halves of the foundation at once: the raw syscalls work on this
 // ABI, and the decrypted path was byte-exact — a wrong decode would open nothing.
-// Not shipped: release keeps scanRoot as its only entry point.
 extern "C" JNIEXPORT jboolean JNICALL
 Java_io_github_rootect_NativeBridge_selfTest(JNIEnv*, jobject) {
     auto path = ROOTECT_HIDE("/proc/self/status");
@@ -33,8 +31,8 @@ Java_io_github_rootect_NativeBridge_selfTest(JNIEnv*, jobject) {
     return (res.complete() && saw_marker) ? JNI_TRUE : JNI_FALSE;
 }
 
-// Lets the instrumented tests drive for_each_line against fixture files, including the
-// hostile cases that must not fault the host app. Returns {error, truncated, lines}.
+// Debug only. Drives for_each_line against fixture files, including the hostile cases.
+// Returns {error, truncated, lines}.
 extern "C" JNIEXPORT jintArray JNICALL
 Java_io_github_rootect_NativeBridge_parserProbe(JNIEnv* env, jobject, jstring jpath) {
     jint out[3] = {0, 0, 0};
@@ -56,13 +54,13 @@ Java_io_github_rootect_NativeBridge_parserProbe(JNIEnv* env, jobject, jstring jp
     return arr;
 }
 
-// Lets a test fail if the bit contract with NativeSignals.kt drifts.
+// Debug only. Lets a test fail if the bit contract with NativeSignals.kt drifts.
 extern "C" JNIEXPORT jint JNICALL
 Java_io_github_rootect_NativeBridge_nativeSignalCount(JNIEnv*, jobject) {
     return static_cast<jint>(rootect::kNativeSignalCount);
 }
 
-// Returns 0 if reachable, else -errno.
+// Debug only. Returns 0 if reachable, else -errno.
 extern "C" JNIEXPORT jint JNICALL
 Java_io_github_rootect_NativeBridge_pathProbe(JNIEnv* env, jobject, jstring jpath) {
     const char* path = env->GetStringUTFChars(jpath, nullptr);

@@ -1,6 +1,6 @@
 #pragma once
 
-// Root detection built on the primitives in syscalls.h / proc.h / obfuscate.h.
+// Detection built on the primitives in syscalls.h / proc.h / obfuscate.h.
 
 namespace rootect {
 
@@ -13,9 +13,14 @@ enum NativeSignal : unsigned {
     NS_KERNEL_ROOT_SYSCALL = 1u << 3,
     NS_BOOTLOADER_UNLOCKED = 1u << 4,
     NS_TEST_KEYS_BUILD = 1u << 5,
+    NS_FRIDA_LIBRARY = 1u << 6,
+    NS_FRIDA_THREAD = 1u << 7,
+    NS_XPOSED_FRAMEWORK = 1u << 8,
+    NS_CODE_MODIFIED = 1u << 9,
+    NS_TRACER_ATTACHED = 1u << 10,
 };
 
-constexpr unsigned kNativeSignalCount = 6;
+constexpr unsigned kNativeSignalCount = 11;
 
 struct ScanOutcome {
     unsigned flags = 0;
@@ -26,6 +31,9 @@ struct ScanOutcome {
     unsigned inconclusive = 0;
 };
 
-ScanOutcome scan_root();
+void scan_root(ScanOutcome& out);
+void scan_hooks(ScanOutcome& out);
+
+ScanOutcome scan_all();
 
 } // namespace rootect

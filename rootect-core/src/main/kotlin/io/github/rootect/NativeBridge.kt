@@ -6,10 +6,11 @@ internal object NativeBridge {
         System.loadLibrary("rootect")
     }
 
-    external fun selfTest(): Boolean
+    /** Runs every native check. Returns [flags, inconclusive]. */
+    external fun scan(): IntArray
 
-    /** Runs the native root checks. Returns [flags, inconclusive]. */
-    external fun scanRoot(): IntArray
+    /** Debug builds only. */
+    external fun selfTest(): Boolean
 
     /** Debug builds only. Returns [error, truncated, lines]. */
     external fun parserProbe(path: String): IntArray

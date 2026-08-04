@@ -2,14 +2,11 @@
 
 // Raw syscalls via inline assembly, one backend per ABI.
 //
-// Every file/kernel probe goes through here rather than libc. `open`, `read`, `access`
-// and friends are PLT entries an attacker hooks in one line; `svc #0` talks to the kernel
-// directly, so a userspace hook on libc achieves nothing. This does NOT defend against a
-// hostile kernel — KernelSU and APatch live below this line.
-
-// Raw syscalls return -errno on failure, not -1 with errno set. Callers get the reason for
-// free and must not collapse it: -ENOENT ("absent") and -EACCES ("not allowed to look") are
-// different findings.
+// libc's open/read/access are PLT entries an attacker hooks in one line; `svc #0` talks to
+// the kernel directly. No defence against a hostile kernel — KernelSU lives below this line.
+//
+// These return -errno on failure, not -1. Do not collapse it: -ENOENT ("absent") and
+// -EACCES ("not allowed to look") are different findings.
 
 #include <errno.h>
 #include <fcntl.h>
@@ -18,6 +15,7 @@
 
 namespace rootect {
 
+// Issues syscall `n` with up to six arguments.
 #if defined(__aarch64__)
 
 static inline long rt_syscall(long n, long a0, long a1, long a2, long a3, long a4, long a5) {
@@ -74,7 +72,7 @@ static inline long rt_syscall(long n, long a0, long a1, long a2, long a3, long a
 #error "rootect: no raw-syscall backend for this ABI"
 #endif
 
-// Thin wrappers. O_CLOEXEC so a probe never leaks a descriptor across exec.
+// Opens a path. O_CLOEXEC so a probe never leaks a descriptor across exec.
 static inline int rt_openat(const char* path, int flags) {
     return static_cast<int>(rt_syscall(__NR_openat, AT_FDCWD,
                                        reinterpret_cast<long>(path),
@@ -91,11 +89,12 @@ static inline long rt_read(int fd, void* buf, unsigned long count) {
     }
 }
 
+// Closes a descriptor.
 static inline int rt_close(int fd) {
     return static_cast<int>(rt_syscall(__NR_close, fd, 0, 0, 0, 0, 0));
 }
 
-// mode is F_OK / R_OK / X_OK. Returns 0 if the access is allowed.
+// Tests access to a path. mode is F_OK / R_OK / X_OK; 0 means allowed.
 static inline int rt_faccessat(const char* path, int mode) {
     return static_cast<int>(rt_syscall(__NR_faccessat, AT_FDCWD,
                                        reinterpret_cast<long>(path), mode, 0, 0, 0));
@@ -106,5 +105,29 @@ static inline int rt_faccessat(const char* path, int mode) {
 static inline long rt_prctl(long opt, long a1, long a2, long a3, long a4) {
     return rt_syscall(__NR_prctl, opt, a1, a2, a3, a4, 0);
 }
+
+// Reads directory entries. Used to walk /proc/self/task, which has no fixed listing.
+static inline long rt_getdents64(int fd, void* buf, unsigned long len) {
+    return rt_syscall(__NR_getdents64, fd, reinterpret_cast<long>(buf),
+                      static_cast<long>(len), 0, 0, 0);
+}
+
+// Positional read, so comparing a file against its own mapping needs no seek state.
+static inline long rt_pread(int fd, void* buf, unsigned long count, long offset) {
+    for (;;) {
+        long n = rt_syscall(__NR_pread64, fd, reinterpret_cast<long>(buf),
+                            static_cast<long>(count), offset, 0, 0);
+        if (n != -EINTR) return n;
+    }
+}
+
+// getdents64 entry layout. Declared here because the libc struct name differs by platform.
+struct rt_dirent64 {
+    unsigned long long d_ino;
+    long long d_off;
+    unsigned short d_reclen;
+    unsigned char d_type;
+    char d_name[];
+};
 
 } // namespace rootect
