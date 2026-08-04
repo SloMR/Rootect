@@ -4,6 +4,7 @@ project(rootect LANGUAGES CXX)
 
 add_library(rootect SHARED
         rootect.cpp
+        detect_root.cpp
 )
 
 target_compile_features(rootect PRIVATE cxx_std_17)

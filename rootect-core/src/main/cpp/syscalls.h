@@ -101,4 +101,10 @@ static inline int rt_faccessat(const char* path, int mode) {
                                        reinterpret_cast<long>(path), mode, 0, 0, 0));
 }
 
+// Kernel-side root frameworks hook prctl and answer on a magic option number. A stock
+// kernel has no such option and returns -EINVAL, so a non-error reply is the finding.
+static inline long rt_prctl(long opt, long a1, long a2, long a3, long a4) {
+    return rt_syscall(__NR_prctl, opt, a1, a2, a3, a4, 0);
+}
+
 } // namespace rootect
