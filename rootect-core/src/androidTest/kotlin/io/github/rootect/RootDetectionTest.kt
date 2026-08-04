@@ -16,8 +16,8 @@ class RootDetectionTest {
 
     @Test
     fun nativeAndKotlinAgreeOnTheSignalBits() {
-        // The bitmask is a hand-maintained contract across the JNI boundary; this fails
-        // the moment one side gains a signal the other does not know about.
+        // Hand-maintained contract across the JNI boundary; fails the moment one side
+        // gains a signal the other does not know about.
         assertEquals(NativeBridge.nativeSignalCount(), NativeSignals.count)
     }
 
@@ -36,7 +36,7 @@ class RootDetectionTest {
 
     @Test
     fun scanReturnsWellFormedOutput() {
-        val scan = NativeBridge.scanRoot()
+        val scan = NativeBridge.scan()
         assertEquals(2, scan.size)
 
         val valid = (0 until NativeSignals.count).fold(0) { acc, i -> acc or (1 shl i) }
@@ -53,8 +53,7 @@ class RootDetectionTest {
         assertEquals(RiskLevel.forScore(report.score), report.risk)
         assertTrue(report.inconclusiveChecks >= 0)
 
-        // Not an assertion about this device — a record of what it actually saw, so results
-        // get written down from observation rather than expectation.
+        // A record of what this device actually saw, not an assertion about it.
         Log.i(
             "RootectScan",
             buildString {
@@ -97,15 +96,26 @@ class RootDetectionTest {
     }
 
     @Test
+    fun uninstrumentedProcessReportsNoHookEvidence() {
+        // The control most likely to misfire: a mistake in the CODE_SECTION_MODIFIED
+        // comparison shows up here as a CONCLUSIVE signal on an ordinary process.
+        val report = Rootect.analyze(context)
+        val hooks = report.signalsIn(Category.HOOK)
+
+        assertTrue("false positive: hook evidence with nothing attached: ${hooks.map { it.id }}",
+            hooks.isEmpty())
+        assertTrue("isHooked must be false when nothing is attached", !report.isHooked)
+    }
+
+    @Test
     fun cleanDeviceReportsNoRootEvidence() {
         assumeTrue("set rootectExpect=clean to run this", expectation == "clean")
 
         val report = Rootect.analyze(context)
         val root = report.signalsIn(Category.ROOT)
 
-        // The false-positive control. A developer emulator legitimately trips ENVIRONMENT
-        // signals like a test-keys build, so overall risk may be elevated — but nothing may
-        // claim the device is rooted.
+        // A developer emulator legitimately trips ENVIRONMENT signals, so overall risk may
+        // be elevated — but nothing may claim the device is rooted.
         assertTrue("false positive: root evidence on a clean device: ${root.map { it.id }}",
             root.isEmpty())
         assertTrue("isRooted must be false on a clean device", !report.isRooted)
