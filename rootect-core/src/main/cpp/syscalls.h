@@ -15,9 +15,11 @@
 
 namespace rootect {
 
-// Issues syscall `n` with up to six arguments.
+// Issues syscall `n` with up to six arguments. One backend per ABI.
+
 #if defined(__aarch64__)
 
+// Number in x8, arguments in x0-x5.
 static inline long rt_syscall(long n, long a0, long a1, long a2, long a3, long a4, long a5) {
     register long x8 __asm__("x8") = n;
     register long x0 __asm__("x0") = a0;
@@ -35,9 +37,9 @@ static inline long rt_syscall(long n, long a0, long a1, long a2, long a3, long a
 
 #elif defined(__arm__)
 
+// Number in r7, arguments in r0-r5. Thumb reserves r7 as the frame pointer, so it is saved
+// and restored around the call rather than bound as a register variable.
 static inline long rt_syscall(long n, long a0, long a1, long a2, long a3, long a4, long a5) {
-    // Thumb reserves r7 as the frame pointer, so it can't be bound as a register variable.
-    // Save it, load the syscall number, svc, then restore.
     register long r0 __asm__("r0") = a0;
     register long r1 __asm__("r1") = a1;
     register long r2 __asm__("r2") = a2;
@@ -56,6 +58,7 @@ static inline long rt_syscall(long n, long a0, long a1, long a2, long a3, long a
 
 #elif defined(__x86_64__)
 
+// Number in rax, arguments in rdi/rsi/rdx/r10/r8/r9.
 static inline long rt_syscall(long n, long a0, long a1, long a2, long a3, long a4, long a5) {
     long ret;
     register long r10 __asm__("r10") = a3;
@@ -113,10 +116,19 @@ static inline long rt_getdents64(int fd, void* buf, unsigned long len) {
 }
 
 // Positional read, so comparing a file against its own mapping needs no seek state.
-static inline long rt_pread(int fd, void* buf, unsigned long count, long offset) {
+// ARM EABI needs the 64-bit offset on an even register pair: r3 is padding, halves in
+// r4/r5. Passing it as one argument there reads the wrong place and still reports success.
+static inline long rt_pread(int fd, void* buf, unsigned long count, long long offset) {
     for (;;) {
+#if defined(__arm__)
         long n = rt_syscall(__NR_pread64, fd, reinterpret_cast<long>(buf),
-                            static_cast<long>(count), offset, 0, 0);
+                            static_cast<long>(count), 0,
+                            static_cast<long>(offset & 0xFFFFFFFFLL),
+                            static_cast<long>((offset >> 32) & 0xFFFFFFFFLL));
+#else
+        long n = rt_syscall(__NR_pread64, fd, reinterpret_cast<long>(buf),
+                            static_cast<long>(count), static_cast<long>(offset), 0, 0);
+#endif
         if (n != -EINTR) return n;
     }
 }

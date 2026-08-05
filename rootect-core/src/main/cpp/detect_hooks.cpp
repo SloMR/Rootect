@@ -207,7 +207,7 @@ void scan_own_code(ScanOutcome& out) {
             unsigned long want = size - pos;
             if (want > sizeof(disk)) want = sizeof(disk);
 
-            long got = rt_pread(fd, disk, want, static_cast<long>(file_off + pos));
+            long got = rt_pread(fd, disk, want, static_cast<long long>(file_off + pos));
             if (got <= 0) break; // past end of file: the tail is zero-fill, not a mismatch
 
             const char* mem = reinterpret_cast<const char*>(start + pos);
