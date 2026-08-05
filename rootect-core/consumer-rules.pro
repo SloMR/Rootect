@@ -4,3 +4,12 @@
 -keepclasseswithmembernames,includedescriptorclasses class io.github.rootect.NativeBridge {
     native <methods>;
 }
+
+# SignalId names are a published contract — host apps persist them and forward them to
+# fraud backends, so renaming them changes data those systems already store. R8 happens to
+# keep them today; this makes it a guarantee rather than a coincidence.
+-keepclassmembers enum io.github.rootect.** {
+    <fields>;
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
