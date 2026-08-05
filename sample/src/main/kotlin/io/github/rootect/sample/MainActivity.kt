@@ -5,6 +5,12 @@ import android.os.Bundle
 import android.widget.ScrollView
 import android.widget.TextView
 import io.github.rootect.Rootect
+import io.github.rootect.RootectConfig
+
+// SHA-256 of the certificate this app should be signed with. A real app pastes its release
+// certificate here; anything else means the APK was resigned, therefore repackaged.
+// Null skips the check, which is what lets this sample build on any machine.
+private val EXPECTED_SIGNING_SHA256: String? = null
 
 /** Placeholder dashboard. */
 class MainActivity : Activity() {
@@ -27,7 +33,10 @@ class MainActivity : Activity() {
 
     /** Runs a scan and renders it. */
     private fun report(): CharSequence = buildString {
-        val report = Rootect.analyze(this@MainActivity)
+        val report = Rootect.analyze(
+            this@MainActivity,
+            RootectConfig(expectedSigningSha256 = EXPECTED_SIGNING_SHA256),
+        )
 
         appendLine("Rootect — sample")
         appendLine("─".repeat(28))
