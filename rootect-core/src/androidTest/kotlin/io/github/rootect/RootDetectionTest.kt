@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -36,12 +37,36 @@ class RootDetectionTest {
 
     @Test
     fun scanReturnsWellFormedOutput() {
-        val scan = NativeBridge.scan()
-        assertEquals(2, scan.size)
+        val scan = NativeBridge.scan(0)
+        assertEquals(3, scan.size)
 
         val valid = (0 until NativeSignals.count).fold(0) { acc, i -> acc or (1 shl i) }
         assertEquals("scan set a bit with no signal behind it", 0, scan[0] and valid.inv())
         assertTrue("inconclusive count must not be negative", scan[1] >= 0)
+    }
+
+    @Test
+    fun nativeAndKotlinAgreeOnTheResultTag() {
+        // If the two mixers drift, every clean device reports DETECTOR_TAMPERED. Several
+        // nonces, since a single one could match by luck.
+        for (nonce in listOf(0, 1, -1, 0x5F3759DF, Int.MIN_VALUE, Int.MAX_VALUE)) {
+            val scan = NativeBridge.scan(nonce)
+            assertEquals(
+                "tag mismatch for nonce $nonce",
+                NativeSignals.tagOf(scan[0], scan[1], nonce),
+                scan[2],
+            )
+        }
+    }
+
+    @Test
+    fun theTagBindsEveryInput() {
+        // A bypass returns chosen flags under a nonce it did not pick. The tag is only
+        // worth anything if changing any input changes it.
+        val n = 999
+        assertNotEquals(NativeSignals.tagOf(0, 0, n), NativeSignals.tagOf(1, 0, n))
+        assertNotEquals(NativeSignals.tagOf(0, 0, n), NativeSignals.tagOf(0, 1, n))
+        assertNotEquals(NativeSignals.tagOf(0, 0, 1), NativeSignals.tagOf(0, 0, 2))
     }
 
     @Test
