@@ -7,7 +7,11 @@ public object Rootect {
 
     /** Runs every enabled detector and returns the evidence. */
     @JvmStatic
-    public fun analyze(context: Context): RootectReport {
+    @JvmOverloads
+    public fun analyze(
+        context: Context,
+        config: RootectConfig = RootectConfig(),
+    ): RootectReport {
         val signals = mutableListOf<Signal>()
         var inconclusive = 0
 
@@ -28,6 +32,12 @@ public object Rootect {
 
         try {
             signals += RuntimeDetector.detect()
+        } catch (_: Throwable) {
+            inconclusive++
+        }
+
+        try {
+            signals += IntegrityDetector.detect(context, config)
         } catch (_: Throwable) {
             inconclusive++
         }
