@@ -3,16 +3,12 @@ package io.github.rootect
 /** Optional inputs only the host app can supply. */
 public class RootectConfig(
     /**
-     * SHA-256 of the certificate this app is expected to be signed with, hex, with or
-     * without colons and in either case. Null skips the check — Rootect cannot know what
-     * your release key is.
+     * SHA-256 of the certificate this app should be signed with, hex, colons optional.
+     * Null skips the check — Rootect cannot know your release key.
      */
     public val expectedSigningSha256: String? = null,
 
-    /**
-     * Installer packages treated as trusted. Anything else, including a sideload with no
-     * installer at all, yields UNTRUSTED_INSTALLER.
-     */
+    /** Installers treated as trusted. Anything else yields UNTRUSTED_INSTALLER. */
     public val trustedInstallers: Set<String> = DEFAULT_TRUSTED_INSTALLERS,
 ) {
     public companion object {
