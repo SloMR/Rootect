@@ -1,6 +1,7 @@
 package io.github.rootect
 
 import android.content.Context
+import kotlin.random.Random
 
 /** Entry point for Rootect. */
 public object Rootect {
@@ -16,12 +17,20 @@ public object Rootect {
         var inconclusive = 0
 
         // Each detector is isolated: a detection library must not be why a host app dies.
+        // A wrong answer is evidence, a library that never loaded is only a packaging bug.
         try {
-            val scan = NativeBridge.scan()
-            signals += NativeSignals.decode(scan[0])
-            inconclusive += scan[1]
-        } catch (_: Throwable) {
+            val nonce = Random.nextInt()
+            val scan = NativeBridge.scan(nonce)
+            if (scan.size != 3 || scan[2] != NativeSignals.tagOf(scan[0], scan[1], nonce)) {
+                signals += Signal(SignalId.DETECTOR_TAMPERED)
+            } else {
+                signals += NativeSignals.decode(scan[0])
+                inconclusive += scan[1]
+            }
+        } catch (_: UnsatisfiedLinkError) {
             inconclusive++
+        } catch (_: Throwable) {
+            signals += Signal(SignalId.DETECTOR_TAMPERED)
         }
 
         try {

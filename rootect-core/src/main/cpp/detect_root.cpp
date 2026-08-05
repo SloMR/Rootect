@@ -148,6 +148,18 @@ void scan_root(ScanOutcome& out) {
     scan_kernel(out);
 }
 
+// Mixes a scan result with a caller-supplied nonce. Must stay identical to the Kotlin
+// mirror in NativeSignals.kt.
+unsigned result_tag(unsigned flags, unsigned inconclusive, unsigned nonce) {
+    unsigned x = nonce ^ (flags * 2654435761u) ^ ((inconclusive + 1u) * 40503u);
+    x ^= x >> 15;
+    x *= 0x2545F491u;
+    x ^= x >> 13;
+    x *= 0x27D4EB2Fu;
+    x ^= x >> 16;
+    return x;
+}
+
 // Runs everything the native layer can detect.
 ScanOutcome scan_all() {
     ScanOutcome out;

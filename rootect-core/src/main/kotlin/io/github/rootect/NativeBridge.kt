@@ -6,8 +6,8 @@ internal object NativeBridge {
         System.loadLibrary("rootect")
     }
 
-    /** Runs every native check. Returns [flags, inconclusive]. */
-    external fun scan(): IntArray
+    /** Runs every native check. Returns [flags, inconclusive, tag]. */
+    external fun scan(nonce: Int): IntArray
 
     /** Debug builds only. */
     external fun selfTest(): Boolean

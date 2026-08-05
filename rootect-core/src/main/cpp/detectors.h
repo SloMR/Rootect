@@ -36,6 +36,10 @@ void scan_root(ScanOutcome& out);
 void scan_hooks(ScanOutcome& out);
 void scan_emulator(ScanOutcome& out);
 
+// Mixes a scan result with a caller-supplied nonce. Kotlin re-derives this and treats a
+// mismatch as evidence, so replacing the JNI entry point is no longer free.
+unsigned result_tag(unsigned flags, unsigned inconclusive, unsigned nonce);
+
 ScanOutcome scan_all();
 
 } // namespace rootect

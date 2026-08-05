@@ -4,14 +4,22 @@
 #include "obfuscate.h"
 #include "proc.h"
 
-// Runs every native check. Returns {flags, inconclusive}.
+// Runs every native check. Returns {flags, inconclusive, tag}.
+//
+// Replacing this function silences every native check invisibly — they simply never run,
+// so not even the self-code check notices. The tag is what makes that detectable.
 extern "C" JNIEXPORT jintArray JNICALL
-Java_io_github_rootect_NativeBridge_scan(JNIEnv* env, jobject) {
+Java_io_github_rootect_NativeBridge_scan(JNIEnv* env, jobject, jint nonce) {
     auto outcome = rootect::scan_all();
 
-    jint out[2] = {static_cast<jint>(outcome.flags), static_cast<jint>(outcome.inconclusive)};
-    jintArray arr = env->NewIntArray(2);
-    if (arr != nullptr) env->SetIntArrayRegion(arr, 0, 2, out);
+    jint out[3] = {
+        static_cast<jint>(outcome.flags),
+        static_cast<jint>(outcome.inconclusive),
+        static_cast<jint>(rootect::result_tag(outcome.flags, outcome.inconclusive,
+                                              static_cast<unsigned>(nonce))),
+    };
+    jintArray arr = env->NewIntArray(3);
+    if (arr != nullptr) env->SetIntArrayRegion(arr, 0, 3, out);
     return arr;
 }
 

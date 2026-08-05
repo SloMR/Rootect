@@ -21,6 +21,19 @@ internal object NativeSignals {
 
     val count: Int get() = bits.size
 
+    /** Mirror of result_tag in detect_root.cpp. The two must stay identical. */
+    fun tagOf(flags: Int, inconclusive: Int, nonce: Int): Int {
+        // Hex with toInt() rather than a decimal literal: these are unsigned constants in
+        // the C++ mirror, and hand-converting them to signed is how they drift apart.
+        var x = nonce xor (flags * 0x9E3779B1.toInt()) xor ((inconclusive + 1) * 40503)
+        x = x xor (x ushr 15)
+        x *= 0x2545F491
+        x = x xor (x ushr 13)
+        x *= 0x27D4EB2F
+        x = x xor (x ushr 16)
+        return x
+    }
+
     /** Turns a native flags word into signals. */
     fun decode(flags: Int): List<Signal> =
         bits.filter { (bit, _) -> flags and bit != 0 }.map { (_, id) -> Signal(id) }
