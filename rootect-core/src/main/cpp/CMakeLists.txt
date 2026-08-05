@@ -6,6 +6,7 @@ add_library(rootect SHARED
         rootect.cpp
         detect_root.cpp
         detect_hooks.cpp
+        detect_emulator.cpp
 )
 
 target_compile_features(rootect PRIVATE cxx_std_17)

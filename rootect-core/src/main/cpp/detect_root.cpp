@@ -153,6 +153,7 @@ ScanOutcome scan_all() {
     ScanOutcome out;
     scan_root(out);
     scan_hooks(out);
+    scan_emulator(out);
     return out;
 }
 
