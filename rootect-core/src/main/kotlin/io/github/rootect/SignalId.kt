@@ -26,6 +26,15 @@ public enum class SignalId(
     /** The same property gives two different values depending on how it is read. */
     PROPERTY_TAMPERED(Category.ENVIRONMENT, Confidence.STRONG),
 
+    /** Secure hardware reports the bootloader unlocked or boot unverified. */
+    ATTESTATION_BOOT_UNVERIFIED(Category.ENVIRONMENT, Confidence.STRONG),
+
+    /** No TEE-backed attestation available, so the answer came from software. */
+    ATTESTATION_SOFTWARE_ONLY(Category.ENVIRONMENT, Confidence.MODERATE),
+
+    /** The properties claim a locked, verified device; the hardware disagrees. */
+    ATTESTATION_CONTRADICTS_PROPERTIES(Category.ENVIRONMENT, Confidence.CONCLUSIVE),
+
     // ── Instrumentation ───────────────────────────────────────────────────────
     FRIDA_LIBRARY_MAPPED(Category.HOOK, Confidence.STRONG),
     FRIDA_THREAD_PRESENT(Category.HOOK, Confidence.STRONG),
