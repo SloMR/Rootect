@@ -43,11 +43,12 @@ class ScoringEngineTest {
 
     @Test
     fun `the same id found twice counts once`() {
-        val once = ScoringEngine.score(listOf(Signal(SignalId.SU_BINARY, "/system/bin/su")))
+        // Two probes can find the same thing in different places; that is one finding.
+        val once = ScoringEngine.score(listOf(Signal(SignalId.SU_BINARY)))
         val twice = ScoringEngine.score(
             listOf(
-                Signal(SignalId.SU_BINARY, "/system/bin/su"),
-                Signal(SignalId.SU_BINARY, "/system/xbin/su"),
+                Signal(SignalId.SU_BINARY),
+                Signal(SignalId.SU_BINARY),
             ),
         )
         assertEquals(once, twice)
