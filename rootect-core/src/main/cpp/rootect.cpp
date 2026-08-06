@@ -1,4 +1,5 @@
 #include <jni.h>
+#include <sys/system_properties.h>
 
 #include "detectors.h"
 #include "obfuscate.h"
@@ -66,6 +67,32 @@ Java_io_github_rootect_NativeBridge_parserProbe(JNIEnv* env, jobject, jstring jp
 extern "C" JNIEXPORT jint JNICALL
 Java_io_github_rootect_NativeBridge_nativeSignalCount(JNIEnv*, jobject) {
     return static_cast<jint>(rootect::kNativeSignalCount);
+}
+
+// Debug only. Returns {found, serial, value_len} for a system property.
+//
+// Recon for property tampering: bionic bumps a property's serial on every write, and
+// `ro.*` properties are written once at boot. Whether resetprop leaves that trace is
+// the question this measures.
+extern "C" JNIEXPORT jintArray JNICALL
+Java_io_github_rootect_NativeBridge_propProbe(JNIEnv* env, jobject, jstring jname) {
+    jint out[3] = {0, 0, 0};
+
+    const char* name = env->GetStringUTFChars(jname, nullptr);
+    if (name != nullptr) {
+        const prop_info* pi = __system_property_find(name);
+        if (pi != nullptr) {
+            unsigned serial = __system_property_serial(pi);
+            out[0] = 1;
+            out[1] = static_cast<jint>(serial);
+            out[2] = static_cast<jint>(serial >> 24);
+        }
+        env->ReleaseStringUTFChars(jname, name);
+    }
+
+    jintArray arr = env->NewIntArray(3);
+    if (arr != nullptr) env->SetIntArrayRegion(arr, 0, 3, out);
+    return arr;
 }
 
 // Debug only. Returns 0 if reachable, else -errno.

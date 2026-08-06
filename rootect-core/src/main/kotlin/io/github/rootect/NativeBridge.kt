@@ -18,6 +18,9 @@ internal object NativeBridge {
     /** Debug builds only. 0 if reachable, else -errno. */
     external fun pathProbe(path: String): Int
 
+    /** Debug builds only. Returns [found, serial, valueLen] for a system property. */
+    external fun propProbe(name: String): IntArray
+
     /** Debug builds only. How many signal bits the native side defines. */
     external fun nativeSignalCount(): Int
 }
