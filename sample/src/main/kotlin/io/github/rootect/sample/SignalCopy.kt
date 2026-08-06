@@ -18,8 +18,6 @@ internal object SignalCopy {
             "A root manager app is installed."
         SignalId.SYSTEM_PARTITION_WRITABLE ->
             "A partition that ships read-only is mounted writable."
-        SignalId.MOUNT_NAMESPACE_DIVERGENCE ->
-            "Our mounts differ from init's — something hid itself from this app."
         SignalId.KERNEL_ROOT_SYSCALL ->
             "The kernel answered a root framework's private syscall."
 
@@ -29,8 +27,6 @@ internal object SignalCopy {
             "SELinux is not enforcing."
         SignalId.BOOTLOADER_UNLOCKED ->
             "Verified Boot reports the bootloader is unlocked."
-        SignalId.PROPERTY_TAMPERED ->
-            "A system property reads differently depending on how it is queried."
         SignalId.ATTESTATION_BOOT_UNVERIFIED ->
             "The device's secure hardware reports the bootloader unlocked or boot unverified."
         SignalId.ATTESTATION_SOFTWARE_ONLY ->
@@ -42,8 +38,6 @@ internal object SignalCopy {
             "A Frida agent is mapped into this process."
         SignalId.FRIDA_THREAD_PRESENT ->
             "Threads belonging to Frida are running inside this process."
-        SignalId.FRIDA_SERVER_REACHABLE ->
-            "A Frida server is listening on this device."
         SignalId.XPOSED_FRAMEWORK_PRESENT ->
             "Xposed or LSPosed is loaded."
         SignalId.CODE_SECTION_MODIFIED ->

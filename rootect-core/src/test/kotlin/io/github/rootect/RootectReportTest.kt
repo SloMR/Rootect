@@ -42,7 +42,7 @@ class RootectReportTest {
 
     @Test
     fun `one conclusive root signal is enough to report rooted`() {
-        val report = report(SignalId.MOUNT_NAMESPACE_DIVERGENCE)
+        val report = report(SignalId.KERNEL_ROOT_SYSCALL)
         assertTrue(report.isRooted)
         assertEquals(RiskLevel.CRITICAL, report.risk)
     }

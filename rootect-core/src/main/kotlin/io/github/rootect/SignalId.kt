@@ -12,9 +12,6 @@ public enum class SignalId(
     ROOT_MANAGER_PACKAGE(Category.ROOT, Confidence.MODERATE),
     SYSTEM_PARTITION_WRITABLE(Category.ROOT, Confidence.STRONG),
 
-    /** init's mount table lists mounts ours does not — Magisk hid them from us only. */
-    MOUNT_NAMESPACE_DIVERGENCE(Category.ROOT, Confidence.CONCLUSIVE),
-
     /** prctl(0xDEADBEEF) returned data. A stock kernel rejects it with EINVAL. */
     KERNEL_ROOT_SYSCALL(Category.ROOT, Confidence.CONCLUSIVE),
 
@@ -22,9 +19,6 @@ public enum class SignalId(
     TEST_KEYS_BUILD(Category.ENVIRONMENT, Confidence.WEAK),
     SELINUX_PERMISSIVE(Category.ENVIRONMENT, Confidence.STRONG),
     BOOTLOADER_UNLOCKED(Category.ENVIRONMENT, Confidence.STRONG),
-
-    /** The same property gives two different values depending on how it is read. */
-    PROPERTY_TAMPERED(Category.ENVIRONMENT, Confidence.STRONG),
 
     /** Secure hardware reports the bootloader unlocked or boot unverified. */
     ATTESTATION_BOOT_UNVERIFIED(Category.ENVIRONMENT, Confidence.STRONG),
@@ -38,7 +32,6 @@ public enum class SignalId(
     // ── Instrumentation ───────────────────────────────────────────────────────
     FRIDA_LIBRARY_MAPPED(Category.HOOK, Confidence.STRONG),
     FRIDA_THREAD_PRESENT(Category.HOOK, Confidence.STRONG),
-    FRIDA_SERVER_REACHABLE(Category.HOOK, Confidence.MODERATE),
     XPOSED_FRAMEWORK_PRESENT(Category.HOOK, Confidence.STRONG),
 
     /** Our machine code in memory no longer matches the .so on disk. */
