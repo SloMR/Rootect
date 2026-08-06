@@ -125,6 +125,29 @@ void scan_properties(ScanOutcome& out) {
     }
 }
 
+// Flags a device that is not enforcing SELinux.
+//
+// The discriminator is the read succeeding, not what it returns: policy denies
+// untrusted_app read on this file, so getting bytes back at all means denials are not
+// being enforced. Existence proves nothing — faccessat succeeds either way.
+void scan_selinux(ScanOutcome& out) {
+    auto path = ROOTECT_HIDE("/sys/fs/selinux/enforce");
+
+    if (path_probe(path.c_str()) != 0) {
+        ++out.inconclusive; // no selinuxfs to ask
+        return;
+    }
+
+    bool permissive = false;
+    auto res = for_each_line(path.c_str(), [&](const char* line, std::size_t len) {
+        if (len > 0 && line[0] == '0') permissive = true;
+    });
+
+    // Denied is the healthy answer, so it is silent rather than inconclusive.
+    if (res.error != 0) return;
+    if (permissive) out.flags |= NS_SELINUX_PERMISSIVE;
+}
+
 // Flags a kernel-side root framework. KernelSU and APatch hook prctl on a magic option and
 // write their version back; a stock kernel fails with EINVAL without touching the buffer.
 // The return value is ignored on purpose — the buffer being written at all is the finding.
@@ -145,6 +168,7 @@ void scan_root(ScanOutcome& out) {
     scan_mounts(out);
     scan_paths(out);
     scan_properties(out);
+    scan_selinux(out);
     scan_kernel(out);
 }
 

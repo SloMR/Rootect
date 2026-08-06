@@ -17,6 +17,7 @@ internal object NativeSignals {
         (1 shl 9) to SignalId.CODE_SECTION_MODIFIED,
         (1 shl 10) to SignalId.TRACER_ATTACHED,
         (1 shl 11) to SignalId.EMULATOR_FINGERPRINT,
+        (1 shl 12) to SignalId.SELINUX_PERMISSIVE,
     )
 
     val count: Int get() = bits.size

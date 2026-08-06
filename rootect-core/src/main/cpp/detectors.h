@@ -19,9 +19,10 @@ enum NativeSignal : unsigned {
     NS_CODE_MODIFIED = 1u << 9,
     NS_TRACER_ATTACHED = 1u << 10,
     NS_EMULATOR = 1u << 11,
+    NS_SELINUX_PERMISSIVE = 1u << 12,
 };
 
-constexpr unsigned kNativeSignalCount = 12;
+constexpr unsigned kNativeSignalCount = 13;
 
 struct ScanOutcome {
     unsigned flags = 0;
