@@ -31,6 +31,12 @@ internal object SignalCopy {
             "Verified Boot reports the bootloader is unlocked."
         SignalId.PROPERTY_TAMPERED ->
             "A system property reads differently depending on how it is queried."
+        SignalId.ATTESTATION_BOOT_UNVERIFIED ->
+            "The device's secure hardware reports the bootloader unlocked or boot unverified."
+        SignalId.ATTESTATION_SOFTWARE_ONLY ->
+            "No hardware-backed attestation — the answer came from software and is weaker."
+        SignalId.ATTESTATION_CONTRADICTS_PROPERTIES ->
+            "System properties claim a locked device; the secure hardware says otherwise."
 
         SignalId.FRIDA_LIBRARY_MAPPED ->
             "A Frida agent is mapped into this process."

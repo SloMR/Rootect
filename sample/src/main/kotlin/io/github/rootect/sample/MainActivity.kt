@@ -48,8 +48,15 @@ class MainActivity : Activity() {
     }
 
     /** The whole integration: one call, optionally configured. */
-    private fun scan(): RootectReport =
-        Rootect.analyze(this, RootectConfig(expectedSigningSha256 = EXPECTED_SIGNING_SHA256))
+    private fun scan(): RootectReport = Rootect.analyze(
+        this,
+        RootectConfig(
+            expectedSigningSha256 = EXPECTED_SIGNING_SHA256,
+            // Costs a key generation, so a real app would run it on a considered check
+            // rather than every screen. Enabled here because it is the strongest signal.
+            hardwareAttestation = true,
+        ),
+    )
 
     /** Rebuilds the dashboard from a fresh scan. */
     private fun render() {
