@@ -68,9 +68,11 @@ class IntegrityTest {
 
         Log.i("RootectIntegrity", "emulator=$isEmulatorSignal expectation=$expectation")
 
+        // `clean` is a physical device that happens to be unmodified, which is not the same
+        // thing as an emulator. Conflating them asserts that real hardware is virtual.
         when (expectation) {
-            "clean" -> assertTrue("emulator not detected on the emulator", isEmulatorSignal)
-            "rooted", "rooted-hidden" ->
+            "emulator" -> assertTrue("emulator not detected on the emulator", isEmulatorSignal)
+            "clean", "rooted", "rooted-hidden" ->
                 assertFalse("false positive: physical device flagged as an emulator",
                     isEmulatorSignal)
         }

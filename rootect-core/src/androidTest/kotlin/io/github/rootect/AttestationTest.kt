@@ -81,6 +81,21 @@ class AttestationTest {
     }
 
     @Test
+    fun aLockedDeviceIsReportedByHardware() {
+        assumeTrue("set rootectExpect=clean to run this", expectation == "clean")
+
+        val result = HardwareAttestation.attest()
+        assumeTrue("device produced no attestation", result != null)
+
+        // The mirror of the test above. Together they prove the parse reads a real field
+        // rather than returning the same answer whatever the hardware said.
+        assertTrue(
+            "hardware reported an unlocked or unverified device on a stock device",
+            result!!.deviceLocked && result.isBootVerified,
+        )
+    }
+
+    @Test
     fun contradictionOnlyFiresWhenPropertiesDisagree() {
         val result = HardwareAttestation.attest()
         assumeTrue("device produced no attestation", result != null)

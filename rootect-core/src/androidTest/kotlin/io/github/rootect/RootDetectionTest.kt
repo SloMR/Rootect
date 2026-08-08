@@ -91,9 +91,12 @@ class RootDetectionTest {
     }
 
     // What this device is supposed to be, passed in deliberately rather than guessed:
-    //   -Pandroid.testInstrumentationRunnerArguments.rootectExpect=rooted   (Real Device)
-    //   -Pandroid.testInstrumentationRunnerArguments.rootectExpect=clean    (emulator)
-    // Unset skips both, so an accidental CI run cannot assert something untrue.
+    //   -Pandroid.testInstrumentationRunnerArguments.rootectExpect=<value>
+    //     rooted         rooted phone, root visible
+    //     rooted-hidden  rooted phone, root actively hidden from us
+    //     clean          unmodified physical device
+    //     emulator       clean emulator
+    // Unset skips them all, so an accidental CI run cannot assert something untrue.
     private val expectation: String?
         get() = InstrumentationRegistry.getArguments().getString("rootectExpect")
 
@@ -134,7 +137,10 @@ class RootDetectionTest {
 
     @Test
     fun cleanDeviceReportsNoRootEvidence() {
-        assumeTrue("set rootectExpect=clean to run this", expectation == "clean")
+        assumeTrue(
+            "set rootectExpect=clean or emulator to run this",
+            expectation == "clean" || expectation == "emulator",
+        )
 
         val report = Rootect.analyze(context)
         val root = report.signalsIn(Category.ROOT)
