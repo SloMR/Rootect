@@ -10,7 +10,7 @@ worth against a real attacker, see [threat-model.md](threat-model.md).
 ```kotlin
 // build.gradle.kts
 dependencies {
-    implementation("io.github.rootect:rootect-core:0.1.0")
+    implementation("io.github.rootect:rootect-core:1.0.0")
 }
 ```
 

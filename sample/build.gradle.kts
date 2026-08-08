@@ -10,7 +10,7 @@ android {
         applicationId = "io.github.rootect.sample"
         minSdk = 24
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = providers.gradleProperty("VERSION_NAME").get()
     }
 
     buildTypes {
