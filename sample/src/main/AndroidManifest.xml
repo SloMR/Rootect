@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- The sample needs this to reach the verifier. The library itself needs no
+         permissions, and must never require one from its host. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:label="Rootect Sample"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="true">
 
         <activity
