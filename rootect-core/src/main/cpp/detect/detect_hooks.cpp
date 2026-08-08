@@ -1,9 +1,9 @@
-#include "detectors.h"
+#include "detect/detectors.h"
 
 #include <errno.h>
 
-#include "obfuscate.h"
-#include "proc.h"
+#include "core/obfuscate.h"
+#include "core/proc.h"
 
 namespace rootect {
 namespace {

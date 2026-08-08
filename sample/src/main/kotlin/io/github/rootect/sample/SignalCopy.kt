@@ -1,6 +1,6 @@
 package io.github.rootect.sample
 
-import io.github.rootect.SignalId
+import io.github.rootect.signal.SignalId
 
 // Plain-English descriptions of what each signal means.
 //

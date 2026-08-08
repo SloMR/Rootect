@@ -1,6 +1,8 @@
-package io.github.rootect
+package io.github.rootect.internal.detect
 
 import android.os.Debug
+import io.github.rootect.signal.Signal
+import io.github.rootect.signal.SignalId
 
 // Checks that only exist on the JVM side. Both are easily defeated on their own — they
 // complement the native scans rather than standing in for them.

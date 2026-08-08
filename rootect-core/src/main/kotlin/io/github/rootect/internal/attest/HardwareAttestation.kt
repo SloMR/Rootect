@@ -1,7 +1,9 @@
-package io.github.rootect
+package io.github.rootect.internal.attest
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import io.github.rootect.signal.Signal
+import io.github.rootect.signal.SignalId
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.SecureRandom

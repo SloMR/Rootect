@@ -1,7 +1,9 @@
-package io.github.rootect
+package io.github.rootect.internal.detect
 
 import android.content.Context
 import android.content.pm.PackageManager
+import io.github.rootect.signal.Signal
+import io.github.rootect.signal.SignalId
 
 internal object PackageDetector {
 

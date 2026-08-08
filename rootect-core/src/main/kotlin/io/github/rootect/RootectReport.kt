@@ -1,5 +1,9 @@
 package io.github.rootect
 
+import io.github.rootect.internal.scoring.ScoringEngine
+import io.github.rootect.signal.Category
+import io.github.rootect.signal.Signal
+
 /** What an analysis found. */
 public class RootectReport internal constructor(
     public val signals: List<Signal>,

@@ -1,16 +1,16 @@
 #include <jni.h>
 #include <sys/system_properties.h>
 
-#include "detectors.h"
-#include "obfuscate.h"
-#include "proc.h"
+#include "detect/detectors.h"
+#include "core/obfuscate.h"
+#include "core/proc.h"
 
 // Runs every native check. Returns {flags, inconclusive, tag}.
 //
 // Replacing this function silences every native check invisibly — they simply never run,
 // so not even the self-code check notices. The tag is what makes that detectable.
 extern "C" JNIEXPORT jintArray JNICALL
-Java_io_github_rootect_NativeBridge_scan(JNIEnv* env, jobject, jint nonce) {
+Java_io_github_rootect_internal_jni_NativeBridge_scan(JNIEnv* env, jobject, jint nonce) {
     auto outcome = rootect::scan_all();
 
     jint out[3] = {
@@ -28,7 +28,7 @@ Java_io_github_rootect_NativeBridge_scan(JNIEnv* env, jobject, jint nonce) {
 // Debug only. Proves both halves of the foundation at once: the raw syscalls work on this
 // ABI, and the decrypted path was byte-exact — a wrong decode would open nothing.
 extern "C" JNIEXPORT jboolean JNICALL
-Java_io_github_rootect_NativeBridge_selfTest(JNIEnv*, jobject) {
+Java_io_github_rootect_internal_jni_NativeBridge_selfTest(JNIEnv*, jobject) {
     auto path = ROOTECT_HIDE("/proc/self/status");
     auto marker = ROOTECT_HIDE("Name:");
 
@@ -43,7 +43,7 @@ Java_io_github_rootect_NativeBridge_selfTest(JNIEnv*, jobject) {
 // Debug only. Drives for_each_line against fixture files, including the hostile cases.
 // Returns {error, truncated, lines}.
 extern "C" JNIEXPORT jintArray JNICALL
-Java_io_github_rootect_NativeBridge_parserProbe(JNIEnv* env, jobject, jstring jpath) {
+Java_io_github_rootect_internal_jni_NativeBridge_parserProbe(JNIEnv* env, jobject, jstring jpath) {
     jint out[3] = {0, 0, 0};
 
     const char* path = env->GetStringUTFChars(jpath, nullptr);
@@ -65,7 +65,7 @@ Java_io_github_rootect_NativeBridge_parserProbe(JNIEnv* env, jobject, jstring jp
 
 // Debug only. Lets a test fail if the bit contract with NativeSignals.kt drifts.
 extern "C" JNIEXPORT jint JNICALL
-Java_io_github_rootect_NativeBridge_nativeSignalCount(JNIEnv*, jobject) {
+Java_io_github_rootect_internal_jni_NativeBridge_nativeSignalCount(JNIEnv*, jobject) {
     return static_cast<jint>(rootect::kNativeSignalCount);
 }
 
@@ -75,7 +75,7 @@ Java_io_github_rootect_NativeBridge_nativeSignalCount(JNIEnv*, jobject) {
 // `ro.*` properties are written once at boot. Whether resetprop leaves that trace is
 // the question this measures.
 extern "C" JNIEXPORT jintArray JNICALL
-Java_io_github_rootect_NativeBridge_propProbe(JNIEnv* env, jobject, jstring jname) {
+Java_io_github_rootect_internal_jni_NativeBridge_propProbe(JNIEnv* env, jobject, jstring jname) {
     jint out[3] = {0, 0, 0};
 
     const char* name = env->GetStringUTFChars(jname, nullptr);
@@ -97,7 +97,7 @@ Java_io_github_rootect_NativeBridge_propProbe(JNIEnv* env, jobject, jstring jnam
 
 // Debug only. Returns 0 if reachable, else -errno.
 extern "C" JNIEXPORT jint JNICALL
-Java_io_github_rootect_NativeBridge_pathProbe(JNIEnv* env, jobject, jstring jpath) {
+Java_io_github_rootect_internal_jni_NativeBridge_pathProbe(JNIEnv* env, jobject, jstring jpath) {
     const char* path = env->GetStringUTFChars(jpath, nullptr);
     if (path == nullptr) return -1;
 

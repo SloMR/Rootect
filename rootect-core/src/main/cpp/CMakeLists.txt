@@ -4,10 +4,13 @@ project(rootect LANGUAGES CXX)
 
 add_library(rootect SHARED
         rootect.cpp
-        detect_root.cpp
-        detect_hooks.cpp
-        detect_emulator.cpp
+        detect/detect_root.cpp
+        detect/detect_hooks.cpp
+        detect/detect_emulator.cpp
 )
+
+# So "core/..." and "detect/..." resolve the same from every source file.
+target_include_directories(rootect PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_compile_features(rootect PRIVATE cxx_std_17)
 

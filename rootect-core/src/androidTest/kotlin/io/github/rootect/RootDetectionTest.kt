@@ -3,6 +3,10 @@ package io.github.rootect
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.rootect.internal.jni.NativeBridge
+import io.github.rootect.internal.jni.NativeSignals
+import io.github.rootect.signal.Category
+import io.github.rootect.signal.SignalId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue

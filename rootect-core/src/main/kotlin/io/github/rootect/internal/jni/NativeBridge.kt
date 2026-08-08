@@ -1,4 +1,4 @@
-package io.github.rootect
+package io.github.rootect.internal.jni
 
 internal object NativeBridge {
 

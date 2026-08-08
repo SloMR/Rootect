@@ -1,4 +1,4 @@
-package io.github.rootect
+package io.github.rootect.signal
 
 /** How likely a signal is to be wrong. [weight] is a percentage used by the scorer. */
 public enum class Confidence(internal val weight: Int) {

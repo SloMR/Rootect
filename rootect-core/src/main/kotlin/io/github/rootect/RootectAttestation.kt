@@ -1,5 +1,7 @@
 package io.github.rootect
 
+import io.github.rootect.internal.attest.HardwareAttestation
+
 /**
  * Hardware-signed evidence, for checking on your own server rather than on the device.
  * Needs no Google Play.

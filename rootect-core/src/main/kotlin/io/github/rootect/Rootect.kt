@@ -1,6 +1,14 @@
 package io.github.rootect
 
 import android.content.Context
+import io.github.rootect.internal.attest.HardwareAttestation
+import io.github.rootect.internal.detect.IntegrityDetector
+import io.github.rootect.internal.detect.PackageDetector
+import io.github.rootect.internal.detect.RuntimeDetector
+import io.github.rootect.internal.jni.NativeBridge
+import io.github.rootect.internal.jni.NativeSignals
+import io.github.rootect.signal.Signal
+import io.github.rootect.signal.SignalId
 import kotlin.random.Random
 
 /** Entry point for Rootect. */

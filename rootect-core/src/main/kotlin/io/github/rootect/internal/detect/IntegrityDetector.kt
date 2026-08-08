@@ -1,9 +1,12 @@
-package io.github.rootect
+package io.github.rootect.internal.detect
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
+import io.github.rootect.RootectConfig
+import io.github.rootect.signal.Signal
+import io.github.rootect.signal.SignalId
 import java.security.MessageDigest
 
 // Checks about the app itself rather than the device it runs on.

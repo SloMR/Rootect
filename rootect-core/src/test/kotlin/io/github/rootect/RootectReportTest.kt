@@ -1,5 +1,8 @@
 package io.github.rootect
 
+import io.github.rootect.signal.Category
+import io.github.rootect.signal.Signal
+import io.github.rootect.signal.SignalId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

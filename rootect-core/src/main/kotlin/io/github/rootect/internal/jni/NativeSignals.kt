@@ -1,4 +1,7 @@
-package io.github.rootect
+package io.github.rootect.internal.jni
+
+import io.github.rootect.signal.Signal
+import io.github.rootect.signal.SignalId
 
 // Bit contract with detectors.h. The order must match NativeSignal there; a debug test
 // compares this list's size against nativeSignalCount() so drift fails loudly.

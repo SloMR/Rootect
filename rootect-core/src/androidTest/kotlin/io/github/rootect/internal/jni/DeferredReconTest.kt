@@ -3,6 +3,7 @@ package io.github.rootect
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.rootect.internal.jni.NativeBridge
 import java.io.File
 import org.junit.Test
 import org.junit.runner.RunWith

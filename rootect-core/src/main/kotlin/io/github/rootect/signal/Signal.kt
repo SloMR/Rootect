@@ -1,4 +1,4 @@
-package io.github.rootect
+package io.github.rootect.signal
 
 /** One finding. */
 public class Signal internal constructor(

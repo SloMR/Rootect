@@ -1,4 +1,4 @@
-package io.github.rootect
+package io.github.rootect.signal
 
 /** The catalogue of things Rootect can find. */
 public enum class SignalId(

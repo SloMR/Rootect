@@ -1,5 +1,7 @@
-package io.github.rootect
+package io.github.rootect.internal.scoring
 
+import io.github.rootect.signal.Category
+import io.github.rootect.signal.Signal
 import kotlin.math.roundToInt
 
 /** Combines signal confidences into a 0..100 score. */

@@ -1,4 +1,4 @@
-package io.github.rootect
+package io.github.rootect.internal.attest
 
 // Minimal DER reader, enough to walk a key attestation extension. Hand-rolled because
 // rootect-core ships no dependencies.

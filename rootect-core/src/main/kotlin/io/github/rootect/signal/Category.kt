@@ -1,4 +1,4 @@
-package io.github.rootect
+package io.github.rootect.signal
 
 /** What kind of problem a signal reports. */
 public enum class Category {
