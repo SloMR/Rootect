@@ -7,7 +7,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "io.github.rootect.sample"
+        applicationId = "io.github.rootect.demo"
         minSdk = 24
         versionCode = 1
         versionName = providers.gradleProperty("VERSION_NAME").get()
