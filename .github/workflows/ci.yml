@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first run irrelevant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The daemon JVM is pinned by gradle/gradle-daemon-jvm.properties and provisioned
+      # automatically; this is only the JVM that launches the wrapper.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install NDK
+        run: sdkmanager --install "ndk;28.2.13676358" "cmake;3.22.1"
+
+      - name: Unit tests
+        run: ./gradlew :rootect-core:test
+
+      # Release, because that is the build that ships: R8 runs, NDEBUG strips the debug JNI
+      # probes, and the optimiser gets its chance to undo the string hiding.
+      - name: Build release
+        run: ./gradlew :rootect-core:assembleRelease :sample:assembleRelease
+
+      - name: Check for plaintext detection strings
+        run: bash scripts/check-no-plaintext.sh
+
+      # Every ABI must be present. Losing x86_64 silently would cost the emulator, which is
+      # the false-positive control.
+      - name: Verify all ABIs built
+        run: |
+          set -e
+          aar=rootect-core/build/outputs/aar/rootect-core-release.aar
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            unzip -l "$aar" | grep -q "jni/$abi/librootect.so" \
+              || { echo "missing ABI: $abi"; exit 1; }
+          done
+          echo "all three ABIs present"
+
+      - name: Upload release AAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: rootect-core-release
+          path: rootect-core/build/outputs/aar/*.aar
