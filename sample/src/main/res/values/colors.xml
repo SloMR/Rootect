@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Pale green plate behind the launcher icon, so the transparent mark reads on any
+         wallpaper. -->
+    <color name="ic_launcher_background">#E8F5E9</color>
+</resources>
