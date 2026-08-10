@@ -1,7 +1,7 @@
 package io.github.rootect
 
 /** Optional inputs only the host app can supply. */
-public class RootectConfig(
+public class RootectConfig @JvmOverloads constructor(
     /** SHA-256 of this app's expected signing certificate, hex, colons optional. */
     public val expectedSigningSha256: String? = null,
 
@@ -13,6 +13,7 @@ public class RootectConfig(
 ) {
     public companion object {
         /** Google Play and its legacy feedback package. */
+        @JvmField
         public val DEFAULT_TRUSTED_INSTALLERS: Set<String> =
             setOf("com.android.vending", "com.google.android.feedback")
     }

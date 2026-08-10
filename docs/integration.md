@@ -161,11 +161,12 @@ The API is Java-callable:
 RootectReport report = Rootect.analyze(context);
 
 RootectConfig config = new RootectConfig(
-        "AB:CD:…", RootectConfig.getDEFAULT_TRUSTED_INSTALLERS(), true);
+        "AB:CD:…", RootectConfig.DEFAULT_TRUSTED_INSTALLERS, true);
 RootectReport full = Rootect.analyze(context, config);
 ```
 
-`RootectConfig` has no Java builder; pass all three arguments.
+`RootectConfig` has no Java builder. Its arguments are positional and each has a default, so
+you can stop after the ones you need — `new RootectConfig("AB:CD:…")` is valid.
 
 ## Responding to evidence
 
