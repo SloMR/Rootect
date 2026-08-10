@@ -90,16 +90,15 @@ void scan_paths(ScanOutcome& out) {
     ROOTECT_PROBE(out, "/sbin/.magisk", NS_MAGISK_ARTIFACT);
 }
 
-// True when a property is set and equals `expected`.
-bool prop_is(const char* key, const char* expected) {
-    char value[PROP_VALUE_MAX] = {0};
-    if (__system_property_get(key, value) <= 0) return false;
-    return field_equals(value, expected) && value[0] != '\0';
+// Reads a property into `value`. False when unset, which is not the same as disagreeing.
+bool prop_get(const char* key, char* value) {
+    value[0] = '\0';
+    return __system_property_get(key, value) > 0;
 }
 
 // Flags an unlocked bootloader and test-keys builds. Verified Boot reports its state three
 // ways; any one disagreeing with a locked device is enough. An unset property proves
-// nothing either way.
+// nothing either way, so whether any of them answered is recorded as a fact.
 void scan_properties(ScanOutcome& out) {
     auto vbs = ROOTECT_HIDE("ro.boot.verifiedbootstate");
     auto locked = ROOTECT_HIDE("ro.boot.flash.locked");
@@ -111,16 +110,25 @@ void scan_properties(ScanOutcome& out) {
     auto unlocked = ROOTECT_HIDE("unlocked");
     auto testkeys = ROOTECT_HIDE("test-keys");
 
-    char state[PROP_VALUE_MAX] = {0};
-    if (__system_property_get(vbs.c_str(), state) > 0 && !field_equals(state, green.c_str())) {
-        out.flags |= NS_BOOTLOADER_UNLOCKED;
-    }
-    if (prop_is(locked.c_str(), zero.c_str())) out.flags |= NS_BOOTLOADER_UNLOCKED;
-    if (prop_is(vbmeta.c_str(), unlocked.c_str())) out.flags |= NS_BOOTLOADER_UNLOCKED;
+    char value[PROP_VALUE_MAX];
+    bool answered = false;
 
-    char build_tags[PROP_VALUE_MAX] = {0};
-    if (__system_property_get(tags.c_str(), build_tags) > 0 &&
-        contains(build_tags, testkeys.c_str())) {
+    if (prop_get(vbs.c_str(), value)) {
+        answered = true;
+        if (!field_equals(value, green.c_str())) out.flags |= NS_BOOTLOADER_UNLOCKED;
+    }
+    if (prop_get(locked.c_str(), value)) {
+        answered = true;
+        if (field_equals(value, zero.c_str())) out.flags |= NS_BOOTLOADER_UNLOCKED;
+    }
+    if (prop_get(vbmeta.c_str(), value)) {
+        answered = true;
+        if (field_equals(value, unlocked.c_str())) out.flags |= NS_BOOTLOADER_UNLOCKED;
+    }
+
+    if (answered) out.facts |= NF_BOOT_STATE_READ;
+
+    if (prop_get(tags.c_str(), value) && contains(value, testkeys.c_str())) {
         out.flags |= NS_TEST_KEYS_BUILD;
     }
 }
@@ -174,8 +182,9 @@ void scan_root(ScanOutcome& out) {
 
 // Mixes a scan result with a caller-supplied nonce. Must stay identical to the Kotlin
 // mirror in NativeSignals.kt.
-unsigned result_tag(unsigned flags, unsigned inconclusive, unsigned nonce) {
-    unsigned x = nonce ^ (flags * 2654435761u) ^ ((inconclusive + 1u) * 40503u);
+unsigned result_tag(unsigned flags, unsigned inconclusive, unsigned facts, unsigned nonce) {
+    unsigned x = nonce ^ (flags * 2654435761u) ^ ((inconclusive + 1u) * 40503u) ^
+                 ((facts + 1u) * 2246822519u);
     x ^= x >> 15;
     x *= 0x2545F491u;
     x ^= x >> 13;

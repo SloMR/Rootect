@@ -42,11 +42,16 @@ class RootDetectionTest {
     @Test
     fun scanReturnsWellFormedOutput() {
         val scan = NativeBridge.scan(0)
-        assertEquals(3, scan.size)
+        assertEquals(4, scan.size)
 
         val valid = (0 until NativeSignals.count).fold(0) { acc, i -> acc or (1 shl i) }
         assertEquals("scan set a bit with no signal behind it", 0, scan[0] and valid.inv())
         assertTrue("inconclusive count must not be negative", scan[1] >= 0)
+        assertEquals(
+            "scan set a fact bit with nothing behind it",
+            0,
+            scan[2] and NativeSignals.FACT_BOOT_STATE_READ.inv(),
+        )
     }
 
     @Test
@@ -57,8 +62,8 @@ class RootDetectionTest {
             val scan = NativeBridge.scan(nonce)
             assertEquals(
                 "tag mismatch for nonce $nonce",
-                NativeSignals.tagOf(scan[0], scan[1], nonce),
-                scan[2],
+                NativeSignals.tagOf(scan[0], scan[1], scan[2], nonce),
+                scan[3],
             )
         }
     }
@@ -68,9 +73,10 @@ class RootDetectionTest {
         // A bypass returns chosen flags under a nonce it did not pick. The tag is only
         // worth anything if changing any input changes it.
         val n = 999
-        assertNotEquals(NativeSignals.tagOf(0, 0, n), NativeSignals.tagOf(1, 0, n))
-        assertNotEquals(NativeSignals.tagOf(0, 0, n), NativeSignals.tagOf(0, 1, n))
-        assertNotEquals(NativeSignals.tagOf(0, 0, 1), NativeSignals.tagOf(0, 0, 2))
+        assertNotEquals(NativeSignals.tagOf(0, 0, 0, n), NativeSignals.tagOf(1, 0, 0, n))
+        assertNotEquals(NativeSignals.tagOf(0, 0, 0, n), NativeSignals.tagOf(0, 1, 0, n))
+        assertNotEquals(NativeSignals.tagOf(0, 0, 0, n), NativeSignals.tagOf(0, 0, 1, n))
+        assertNotEquals(NativeSignals.tagOf(0, 0, 0, 1), NativeSignals.tagOf(0, 0, 0, 2))
     }
 
     @Test

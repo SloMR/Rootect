@@ -23,6 +23,7 @@ public object Rootect {
     ): RootectReport {
         val signals = mutableListOf<Signal>()
         var inconclusive = 0
+        var bootStateRead = false
 
         // Each detector is isolated: a detection library must not be why a host app dies.
         // A wrong answer is evidence, a library that never loaded is only a packaging bug.
@@ -32,11 +33,14 @@ public object Rootect {
             try {
                 val nonce = Random.nextInt()
                 val scan = NativeBridge.scan(nonce)
-                if (scan.size != 3 || scan[2] != NativeSignals.tagOf(scan[0], scan[1], nonce)) {
+                if (scan.size != 4 ||
+                    scan[3] != NativeSignals.tagOf(scan[0], scan[1], scan[2], nonce)
+                ) {
                     signals += Signal(SignalId.DETECTOR_TAMPERED)
                 } else {
                     signals += NativeSignals.decode(scan[0])
                     inconclusive += scan[1]
+                    bootStateRead = scan[2] and NativeSignals.FACT_BOOT_STATE_READ != 0
                 }
             } catch (_: UnsatisfiedLinkError) {
                 inconclusive++
@@ -71,7 +75,7 @@ public object Rootect {
                 if (attestation == null) {
                     inconclusive++
                 } else {
-                    val propertiesSayLocked =
+                    val propertiesSayLocked = bootStateRead &&
                         signals.none { it.id == SignalId.BOOTLOADER_UNLOCKED }
                     signals += HardwareAttestation.signals(attestation, propertiesSayLocked)
                 }

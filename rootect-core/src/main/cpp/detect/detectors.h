@@ -24,6 +24,11 @@ enum NativeSignal : unsigned {
 
 constexpr unsigned kNativeSignalCount = 13;
 
+// Not evidence.
+enum NativeFact : unsigned {
+    NF_BOOT_STATE_READ = 1u << 0,
+};
+
 struct ScanOutcome {
     unsigned flags = 0;
 
@@ -31,6 +36,8 @@ struct ScanOutcome {
     // Not evidence of anything; recorded so "found nothing" is never confused with
     // "could not look".
     unsigned inconclusive = 0;
+
+    unsigned facts = 0;
 };
 
 void scan_root(ScanOutcome& out);
@@ -39,7 +46,7 @@ void scan_emulator(ScanOutcome& out);
 
 // Mixes a scan result with a caller-supplied nonce. Kotlin re-derives this and treats a
 // mismatch as evidence, so replacing the JNI entry point is no longer free.
-unsigned result_tag(unsigned flags, unsigned inconclusive, unsigned nonce);
+unsigned result_tag(unsigned flags, unsigned inconclusive, unsigned facts, unsigned nonce);
 
 ScanOutcome scan_all();
 

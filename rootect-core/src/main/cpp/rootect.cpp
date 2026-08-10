@@ -13,14 +13,15 @@ extern "C" JNIEXPORT jintArray JNICALL
 Java_io_github_rootect_internal_jni_NativeBridge_scan(JNIEnv* env, jobject, jint nonce) {
     auto outcome = rootect::scan_all();
 
-    jint out[3] = {
+    jint out[4] = {
         static_cast<jint>(outcome.flags),
         static_cast<jint>(outcome.inconclusive),
-        static_cast<jint>(rootect::result_tag(outcome.flags, outcome.inconclusive,
+        static_cast<jint>(outcome.facts),
+        static_cast<jint>(rootect::result_tag(outcome.flags, outcome.inconclusive, outcome.facts,
                                               static_cast<unsigned>(nonce))),
     };
-    jintArray arr = env->NewIntArray(3);
-    if (arr != nullptr) env->SetIntArrayRegion(arr, 0, 3, out);
+    jintArray arr = env->NewIntArray(4);
+    if (arr != nullptr) env->SetIntArrayRegion(arr, 0, 4, out);
     return arr;
 }
 
