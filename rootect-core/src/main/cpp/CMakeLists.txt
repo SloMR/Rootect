@@ -29,7 +29,8 @@ target_compile_options(rootect PRIVATE
 target_link_options(rootect PRIVATE
         -Wl,--gc-sections
 
-        # 16 KB page alignment. NDK 28 defaults to this, but a misaligned.
+        # 16 KB page alignment. Pinned, not inherited: a misaligned .so will not load at all
+        # on a 16 KB-page device.
         -Wl,-z,max-page-size=16384
 
         # Do not re-export symbols from any static library we link.
