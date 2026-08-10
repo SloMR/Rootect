@@ -11,11 +11,12 @@ your app can weigh, not a verdict it has to accept.
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
 [![API](https://img.shields.io/badge/API-24%2B-brightgreen?style=flat-square)](https://developer.android.com/tools/releases/platforms)
-[![Dependencies](https://img.shields.io/badge/dependencies-none-2E7D32?style=flat-square)](#install)
+[![Dependencies](https://img.shields.io/badge/dependencies-stdlib%20only-2E7D32?style=flat-square)](#install)
 
 </div>
 
-Zero dependencies. No permissions. No Google Play requirement. `minSdk 24`.
+No third-party dependencies — the Kotlin standard library and nothing else. No permissions.
+No Google Play requirement. `minSdk 24`.
 
 ```kotlin
 implementation("io.github.rootect:rootect-core:1.0.0")

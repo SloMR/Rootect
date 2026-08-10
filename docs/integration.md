@@ -14,8 +14,9 @@ dependencies {
 }
 ```
 
-No transitive dependencies, no permissions, no Google Play requirement. `minSdk 24`.
-Native code ships for `arm64-v8a`, `armeabi-v7a` and `x86_64`.
+No third-party dependencies — the published POM pulls in the Kotlin standard library and
+nothing else. No permissions, no Google Play requirement. `minSdk 24`. Native code ships for
+`arm64-v8a`, `armeabi-v7a` and `x86_64`.
 
 R8 and ProGuard need no configuration — the required keep rules ship inside the artifact as
 consumer rules.
