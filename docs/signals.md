@@ -25,6 +25,14 @@ Hidden root is the honest gap. When Magisk actively hides from an app, the files
 evidence is gone, and two candidate replacements were built and measured and neither works on
 current Android — see [Dead ends](#dead-ends).
 
+`ROOT_MANAGER_PACKAGE` carries a cost worth stating plainly. Package visibility on API 30+
+means a library cannot ask whether an app is installed without naming it first, so the manager
+package list ships as a `<queries>` block in the library manifest and merges into the host
+app's. Everything else Rootect looks for is XOR-hidden in native code; this one list is
+readable by unzipping the APK. The alternatives were requesting `QUERY_ALL_PACKAGES`, which no
+library should ask of its host, or dropping the signal — naming eight packages an attacker
+already knows is the cheaper trade.
+
 ## OS posture
 
 | Signal | Confidence | Catches | Limits |
@@ -46,17 +54,28 @@ proves nothing; it exists either way.
 | Signal | Confidence | Catches | Limits |
 |---|---|---|---|
 | `FRIDA_LIBRARY_MAPPED` | STRONG | Known instrumentation libraries in our memory map | Renamed or anonymously-loaded agents |
-| `FRIDA_THREAD_PRESENT` | STRONG | Thread names belonging to instrumentation runtimes | Renamed threads |
+| `FRIDA_THREAD_PRESENT` | STRONG | `gum-js-loop` and `pool-frida` threads in our process | Renamed threads |
 | `XPOSED_FRAMEWORK_PRESENT` | STRONG | Xposed and LSPosed | Module-level hiding |
 | `CODE_SECTION_MODIFIED` | CONCLUSIVE | Our own machine code differing from the file on disk | Instrumentation that sits above the native layer |
-| `TRACER_ATTACHED` | STRONG | A debugger or tracer on our process | Attaching after the scan |
-| `DETECTOR_TAMPERED` | STRONG | The native layer loaded but answering incorrectly | — |
+| `DETECTOR_TAMPERED` | STRONG | The native layer loaded but answering incorrectly | Not raised when the library is simply absent — that is a packaging bug, counted as inconclusive |
 
 `CODE_SECTION_MODIFIED` is the sturdiest of these: it compares every executable page of the
 library against the file it was mapped from, so it catches the *modification* rather than the
 brand, and renaming a tool does not help. It is also the check most dangerous to get wrong —
 an early version fired on every 32-bit device because of an offset bug, which is the sort of
 thing this page exists to admit.
+
+`FRIDA_THREAD_PRESENT` matches only the two thread names Frida alone uses. It also starts a
+GLib loop, whose `gmain` and `gdbus` threads look tempting — but any app embedding GStreamer
+or another GLib consumer has those too, and flagging a host app for its own dependency is
+precisely the false positive that gets a detection library removed.
+
+## Debuggers
+
+| Signal | Confidence | Catches | Limits |
+|---|---|---|---|
+| `TRACER_ATTACHED` | STRONG | A tracer holding our process, read from `TracerPid` | Attaching after the scan; Frida detaches ptrace once injected, so it reads 0 |
+| `DEBUGGER_ATTACHED` | MODERATE | A JDWP debugger on the process | A JVM check, so one hook disables it; ordinary during development, hence `MODERATE` |
 
 ## App integrity
 
@@ -82,6 +101,14 @@ you check it on your server. See [integration.md](integration.md).
 | `ATTESTATION_BOOT_UNVERIFIED` | STRONG | Secure hardware reporting an unlocked or unverified device |
 | `ATTESTATION_SOFTWARE_ONLY` | MODERATE | No hardware-backed attestation available |
 | `ATTESTATION_CONTRADICTS_PROPERTIES` | CONCLUSIVE | Properties claiming a locked device while hardware disagrees |
+
+`ATTESTATION_CONTRADICTS_PROPERTIES` needs the device to have actually claimed something.
+Several `ro.boot.*` properties are readable only by system apps on newer Android, and some
+OEMs never set them, so an app can easily get no answer at all — and "said nothing" is not
+"said locked". The native scan reports whether the boot state was readable, and the
+contradiction is only raised when it was. Without that distinction an honest device with an
+unlocked bootloader and unreadable properties would be accused, at `CONCLUSIVE` confidence, of
+actively rewriting them.
 
 Known limit: tools exist that forge attestation using leaked hardware keys. Checking Google's
 revocation list catches the ones Google knows about, which is most of them, and is why
