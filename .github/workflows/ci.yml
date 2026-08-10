@@ -26,6 +26,8 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - uses: android-actions/setup-android@v4
+
       - name: Install NDK
         run: sdkmanager --install "ndk;28.2.13676358" "cmake;3.22.1"
 
@@ -72,6 +74,8 @@ jobs:
           java-version: '21'
 
       - uses: gradle/actions/setup-gradle@v4
+
+      - uses: android-actions/setup-android@v4
 
       - name: Install NDK
         run: sdkmanager --install "ndk;28.2.13676358" "cmake;3.22.1"
