@@ -48,14 +48,11 @@ void scan_maps(ScanOutcome& out) {
     if (!res.complete()) ++out.inconclusive;
 }
 
-// Flags Frida's own threads. It runs a GLib loop and a JS thread inside the target, and
-// those keep recognisable names.
+// Flags Frida's own threads.
 void scan_threads(ScanOutcome& out) {
     auto task_dir = ROOTECT_HIDE("/proc/self/task");
     auto gum_js = ROOTECT_HIDE("gum-js-loop");
     auto pool_frida = ROOTECT_HIDE("pool-frida");
-    auto gmain = ROOTECT_HIDE("gmain");
-    auto gdbus = ROOTECT_HIDE("gdbus");
 
     int dir = rt_openat(task_dir.c_str(), O_RDONLY | O_DIRECTORY);
     if (dir < 0) {
@@ -93,8 +90,7 @@ void scan_threads(ScanOutcome& out) {
             if (len <= 0) continue;
             if (name[len - 1] == '\n') name[len - 1] = '\0';
 
-            if (starts_with(name, gum_js.c_str()) || starts_with(name, pool_frida.c_str()) ||
-                starts_with(name, gmain.c_str()) || starts_with(name, gdbus.c_str())) {
+            if (starts_with(name, gum_js.c_str()) || starts_with(name, pool_frida.c_str())) {
                 out.flags |= NS_FRIDA_THREAD;
             }
         }
