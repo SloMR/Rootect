@@ -62,13 +62,17 @@ public object Rootect {
         // Opt-in: generating an attested key is slow. Compared against what the properties
         // claimed, because hardware contradicting them is stronger than either alone.
         if (config.hardwareAttestation) {
-            val attestation = HardwareAttestation.attest()
-            if (attestation == null) {
+            try {
+                val attestation = HardwareAttestation.attest()
+                if (attestation == null) {
+                    inconclusive++
+                } else {
+                    val propertiesSayLocked =
+                        signals.none { it.id == SignalId.BOOTLOADER_UNLOCKED }
+                    signals += HardwareAttestation.signals(attestation, propertiesSayLocked)
+                }
+            } catch (_: Throwable) {
                 inconclusive++
-            } else {
-                val propertiesSayLocked =
-                    signals.none { it.id == SignalId.BOOTLOADER_UNLOCKED }
-                signals += HardwareAttestation.signals(attestation, propertiesSayLocked)
             }
         }
 
