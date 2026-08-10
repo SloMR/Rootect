@@ -5,6 +5,9 @@
 # paths are XOR-hidden at compile time (obfuscate.h); this is the gate that proves the
 # plaintext actually stayed out of the shipped .so.
 #
+# Needles are derived from the sources, not kept by hand: a hand-written list stops covering
+# new literals the moment a detector adds one, and the gate keeps passing while proving less.
+#
 # Usage: scripts/check-no-plaintext.sh   (build release first: ./gradlew :rootect-core:assembleRelease)
 
 set -uo pipefail
@@ -16,16 +19,32 @@ if [ "${#sos[@]}" -eq 0 ]; then
   exit 2
 fi
 
-# Specific enough that random binary noise won't false-positive. Short tokens like bare
-# "su" are deliberately excluded — they'd match constantly. Detectors hide full paths.
-needles=(
+# Every hidden literal, straight from the source. Short ones are dropped: "0", "1" and the
+# like occur in any binary as noise and would fail the gate constantly.
+mapfile -t derived < <(
+  grep -rhoE 'ROOTECT_HIDE\("[^"]*"\)' rootect-core/src/main/cpp |
+    sed -e 's/^ROOTECT_HIDE("//' -e 's/")$//' |
+    awk 'length($0) >= 5' |
+    sort -u
+)
+
+# None found means the sources moved. A gate that checks nothing still reports success.
+if [ "${#derived[@]}" -eq 0 ]; then
+  echo "no ROOTECT_HIDE literals found in rootect-core/src/main/cpp — the gate would prove nothing"
+  exit 2
+fi
+
+# Names that must never appear however they arrive, including from a literal someone forgot
+# to wrap. These are the tokens an attacker greps for first.
+extra=(
   magisk magiskhide superuser supersu busybox zygisk
   "/data/adb" "/sbin/su" "/system/bin/su" "/system/xbin/su"
-  frida frida-gum lsposed xposed
-  # Partial forms matter: an optimiser can leak a 16-byte fragment of a longer literal,
-  # so watch for the distinctive prefix, not just the full path.
+  frida frida-gum frida-agent lsposed xposed riru
   "/proc/self" "/proc/1/" "/system/"
 )
+
+mapfile -t needles < <(printf '%s\n' "${derived[@]}" "${extra[@]}" | sort -u)
+echo "check-no-plaintext: ${#needles[@]} needles (${#derived[@]} derived from source)"
 
 status=0
 for so in "${sos[@]}"; do
