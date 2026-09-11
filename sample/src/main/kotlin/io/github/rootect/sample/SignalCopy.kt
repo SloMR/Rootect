@@ -11,7 +11,7 @@ internal object SignalCopy {
     /** One-line explanation of a signal, or a fallback if the catalogue grows. */
     fun of(id: SignalId): String = when (id) {
         SignalId.SU_BINARY ->
-            "An su or busybox binary is present on a system path."
+            "An su binary is present on a system path."
         SignalId.MAGISK_ARTIFACT ->
             "Magisk, KernelSU or APatch is visible in this process's mount table."
         SignalId.ROOT_MANAGER_PACKAGE ->
@@ -27,6 +27,8 @@ internal object SignalCopy {
             "SELinux is not enforcing."
         SignalId.BOOTLOADER_UNLOCKED ->
             "Verified Boot reports the bootloader is unlocked."
+        SignalId.KNOX_WARRANTY_BIT_TRIPPED ->
+            "Samsung's Knox warranty fuse reports historical device tampering."
         SignalId.ATTESTATION_BOOT_UNVERIFIED ->
             "The device's secure hardware reports the bootloader unlocked or boot unverified."
         SignalId.ATTESTATION_SOFTWARE_ONLY ->
@@ -43,7 +45,7 @@ internal object SignalCopy {
         SignalId.CODE_SECTION_MODIFIED ->
             "Our own machine code no longer matches the file it came from — an inline hook."
         SignalId.DETECTOR_TAMPERED ->
-            "The native layer loaded but answered wrongly — something replaced it."
+            "The native detector loaded but failed or returned an invalid result."
 
         SignalId.DEBUGGER_ATTACHED ->
             "A debugger is attached."

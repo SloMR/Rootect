@@ -9,13 +9,20 @@ import java.net.URL
 import org.json.JSONArray
 import org.json.JSONObject
 
+internal enum class AttestationState { CHECKING, TRUSTED, REJECTED, UNAVAILABLE }
+
+internal data class ServerDecision(
+    val state: AttestationState,
+    val title: String,
+    val detail: String,
+)
+
 /**
  * The pattern worth copying.
  *
  * Everything on the dashboard was decided on a device an attacker may own, so it can be
- * rewritten. This sends hardware-signed evidence to a server that decides instead — and
- * sends the local report with it, so a client claiming to be clean while its own hardware
- * says otherwise convicts itself.
+ * rewritten. The hardware chain is the authoritative gate; the local report rides along as
+ * explicitly untrusted runtime evidence the chain cannot see, so a lying client convicts itself.
  */
 internal object Verifier {
 
@@ -23,37 +30,52 @@ internal object Verifier {
     // emulator. A real app points this at its own backend over TLS.
     private const val BASE = "http://127.0.0.1:8080"
 
-    /** Blocking. Returns text to show the user. Call it off the main thread. */
-    fun verify(report: RootectReport?): String = try {
-        val challenge = JSONObject(httpGet("$BASE/challenge")).getString("challenge")
+    /** Blocking. Call it off the main thread. Every failure denies access. */
+    fun verify(report: RootectReport?): ServerDecision = try {
+        val challenge = JSONObject(httpPost("$BASE/challenge", "{}")).getString("challenge")
 
         // The challenge comes from the server and is used once, so a chain captured
         // earlier cannot be replayed.
         val chain = RootectAttestation.chain(challenge.hexToBytes())
         if (chain == null) {
-            "NOT TRUSTED\n\nThis device would not produce a hardware attestation."
+            unavailable(
+                "Attestation unavailable",
+                "This device did not provide hardware-backed evidence.",
+            )
         } else {
             describe(JSONObject(httpPost("$BASE/verify", requestBody(challenge, chain, report))))
         }
-    } catch (e: IOException) {
-        "Could not reach the verifier.\n\n" +
-            "python scripts/mock-verifier.py\n" +
-            "adb reverse tcp:8080 tcp:8080\n\n(${e.message})"
-    } catch (e: Exception) {
-        "Verification failed: ${e.javaClass.simpleName}"
+    } catch (_: IOException) {
+        unavailable(
+            "Server unavailable",
+            "The attestation server could not be reached. Protected access stays paused.",
+        )
+    } catch (_: Exception) {
+        unavailable(
+            "Verification unavailable",
+            "The server response could not be verified. Protected access stays paused.",
+        )
     }
 
     /** The server's verdict and why. */
-    private fun describe(response: JSONObject): String {
+    private fun describe(response: JSONObject): ServerDecision {
+        val trusted = response.getBoolean("attestationTrusted")
         val reasons = response.getJSONArray("reasons")
-        return buildString {
-            append(if (response.getBoolean("trusted")) "TRUSTED" else "NOT TRUSTED")
-            append("\n\n${response.getInt("certificates")} certificates checked")
+        val detail = buildString {
+            append("${response.getInt("certificates")} certificates checked")
             for (i in 0 until reasons.length()) append("\n• ${reasons.getString(i)}")
         }
+        return ServerDecision(
+            if (trusted) AttestationState.TRUSTED else AttestationState.REJECTED,
+            if (trusted) "Device verified" else "Device rejected",
+            detail,
+        )
     }
 
-    /** The chain plus what this device believes, so the server can compare the two. */
+    private fun unavailable(title: String, detail: String) =
+        ServerDecision(AttestationState.UNAVAILABLE, title, detail)
+
+    /** The hardware chain plus the untrusted local report, so the server can compare the two. */
     private fun requestBody(
         challenge: String,
         chain: List<ByteArray>,
@@ -62,25 +84,16 @@ internal object Verifier {
         put("challenge", challenge)
         put("chain", JSONArray(chain.map { Base64.encodeToString(it, Base64.NO_WRAP) }))
         put(
-            "clientReport",
+            "report",
             JSONObject().apply {
-                put("risk", report?.risk?.name)
-                put("isRooted", report?.isRooted)
-                put("signals", JSONArray(report?.signals?.map { it.id.name } ?: emptyList<String>()))
+                put("isRooted", report?.isRooted ?: false)
+                put(
+                    "signals",
+                    JSONArray(report?.signals?.map { it.id.name } ?: emptyList<String>()),
+                )
             },
         )
     }.toString()
-
-    private fun httpGet(url: String): String =
-        (URL(url).openConnection() as HttpURLConnection).run {
-            connectTimeout = TIMEOUT
-            readTimeout = TIMEOUT
-            try {
-                inputStream.bufferedReader().readText()
-            } finally {
-                disconnect()
-            }
-        }
 
     private fun httpPost(url: String, body: String): String =
         (URL(url).openConnection() as HttpURLConnection).run {
@@ -91,7 +104,13 @@ internal object Verifier {
             setRequestProperty("Content-Type", "application/json")
             try {
                 outputStream.use { it.write(body.toByteArray()) }
-                inputStream.bufferedReader().readText()
+                val status = responseCode
+                val response = (if (status in 200..299) inputStream else errorStream)
+                    ?.bufferedReader()
+                    ?.readText()
+                    ?: throw IOException("empty server response")
+                if (status >= 500) throw IOException("server unavailable")
+                response
             } finally {
                 disconnect()
             }
