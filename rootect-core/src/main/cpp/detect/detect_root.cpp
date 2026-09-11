@@ -84,7 +84,6 @@ void scan_paths(ScanOutcome& out) {
     ROOTECT_PROBE(out, "/vendor/bin/su", NS_SU_BINARY);
     ROOTECT_PROBE(out, "/sbin/su", NS_SU_BINARY);
     ROOTECT_PROBE(out, "/su/bin/su", NS_SU_BINARY);
-    ROOTECT_PROBE(out, "/system/xbin/busybox", NS_SU_BINARY);
     ROOTECT_PROBE(out, "/system/bin/magisk", NS_MAGISK_ARTIFACT);
     ROOTECT_PROBE(out, "/system/bin/magiskpolicy", NS_MAGISK_ARTIFACT);
     ROOTECT_PROBE(out, "/sbin/.magisk", NS_MAGISK_ARTIFACT);
