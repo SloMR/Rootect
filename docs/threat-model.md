@@ -36,19 +36,16 @@ your server.
 | | Trust |
 |---|---|
 | `signals`, `risk`, `score` | **Evidence.** Computed on the device, so editable by whoever owns it |
-| Attestation chain verified **on your server** | **Proof.** Signed by secure hardware, tied to a challenge you issued |
+| Attestation chain verified **on your server** | **Cryptographic evidence.** Hardware-signed, app-bound and revocation-checked |
 | Attestation chain verified **on the device** | **Not proof.** It collapses to a local boolean, with all the weaknesses of one |
 
 The difference is not check quality. It is who computes the answer. Anything decided on the
 device is a claim the device makes about itself.
 
-**Why the hardware path holds:** the attestation key lives in the device's secure element. It
-cannot be extracted or used by software, however privileged. An attacker can withhold the
-chain, or send an old or invented one — a server that checks the signature, the root, the
-revocation list and its own challenge rejects all of those. And the hardware attests exactly
-what you want to know: whether the bootloader is unlocked and verified boot passed. Rooting a
-device effectively requires unlocking the bootloader, and the bootloader does not answer to
-the OS running above it.
+**Why the hardware path helps:** the attestation key normally remains in secure hardware. A
+server checks the path, revocation, app identity, challenge and boot state. Leaked keys,
+implementation flaws and live relay remain possible, so this is strong evidence rather than
+an absolute guarantee.
 
 ## Known limits
 
@@ -61,6 +58,8 @@ the OS running above it.
   `isRooted = false`. Use `risk` and `score` — see [scoring.md](scoring.md).
 - **Forged attestation exists.** Tools using leaked hardware keys can fake it. Revocation
   checking catches the known ones; a key nobody has reported yet still passes.
+- **Live relay exists.** A nonce blocks replay, but a clean device can answer a fresh request
+  in real time. Bind challenges to the account and action, then rate-limit and correlate them.
 - **Some devices cannot attest at all.** Treat `ATTESTATION_SOFTWARE_ONLY` as *"could not
   verify"*, never as *"clean"*.
 - **Rooted is not malicious.** Developers, researchers and privacy-minded people root their
@@ -79,6 +78,5 @@ the OS running above it.
 
 ## One sentence
 
-Rootect raises the cost of a bypass from trivial to genuinely difficult, and gives you a
-hardware-signed statement your server can trust. It does not make a rooted phone tell the
-truth.
+Rootect raises bypass cost and supplies hardware-signed evidence for server policy. It does
+not make a rooted phone tell the truth.

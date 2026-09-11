@@ -15,8 +15,8 @@ your app can weigh, not a verdict it has to accept.
 
 </div>
 
-No third-party dependencies — the Kotlin standard library and nothing else. No permissions.
-No Google Play requirement. `minSdk 24`.
+The Android library has no third-party dependencies — the Kotlin standard library and nothing
+else. No permissions. No Google Play requirement. `minSdk 24`.
 
 ```kotlin
 implementation("io.github.rootect:rootect-core:1.0.0")
@@ -53,11 +53,11 @@ one signal that does not depend on the device being honest:
 ```kotlin
 val challenge = api.requestChallenge()              // from your server, used once
 val chain = RootectAttestation.chain(challenge)     // signed by secure hardware
-api.submit(chain, Rootect.analyze(context))         // your server decides
+api.submitAttestation(challenge, chain, Rootect.analyze(context)) // server gates on the chain
 ```
 
-The signing key lives in hardware that software cannot read, so the chain cannot be forged —
-only withheld. Verified on your server, it is the one answer a rooted phone cannot change.
+The signing key normally stays in hardware. Your server validates the chain, revocation,
+freshness and app identity before using it as evidence.
 [How it works, and how to verify it →](docs/attestation.md)
 
 ## Honest limits
@@ -78,7 +78,7 @@ including three ideas that were built, measured, and did not work.
 | | |
 |---|---|
 | [integration.md](docs/integration.md) | Full API, configuration, common mistakes |
-| [attestation.md](docs/attestation.md) | Hardware-backed proof and server verification |
+| [attestation.md](docs/attestation.md) | Hardware-backed evidence and server verification |
 | [signals.md](docs/signals.md) | Every signal, what it catches, and its limits |
 | [scoring.md](docs/scoring.md) | How signals become a 0–100 score |
 | [threat-model.md](docs/threat-model.md) | What Rootect can and cannot promise |
@@ -89,7 +89,8 @@ including three ideas that were built, measured, and did not work.
 ./gradlew :sample:installDebug
 ```
 
-A live dashboard of every signal, which doubles as the integration example.
+A live dashboard of every signal plus a separate server-gated attestation card. The card
+fails closed when the verifier is unavailable; the local dashboard remains diagnostic only.
 
 ## Building
 
@@ -103,6 +104,22 @@ project, so a clone provisions it automatically.
 
 Native code builds for `arm64-v8a`, `armeabi-v7a` and `x86_64`. The emulator ABI stays in
 that list deliberately — it is the false-positive control.
+
+### Per-distribution native diversity
+
+The published AAR is necessarily identical for every Maven consumer. A company or fork
+that builds Rootect from source can give its native string obfuscation a distinct build
+seed without changing code:
+
+```bash
+./gradlew :rootect-core:generateRootectObfuscationSeed -q
+./gradlew :rootect-core:assembleRelease --project-prop=rootect.obfuscationSeed=0xYOURSEED
+```
+
+The seed is a diversity input, not a secret. Keep it stable for reproducible builds or
+rotate it deliberately per release. Different seeds produce different native result tags
+and encrypted strings, making byte-for-byte patches less reusable across apps; they do not
+make an on-device detector impossible to reverse.
 
 ## License
 
