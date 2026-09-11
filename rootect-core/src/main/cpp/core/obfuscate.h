@@ -12,11 +12,29 @@
 #include <cstddef>
 #include <utility>
 
+#ifndef ROOTECT_OBFUSCATION_SEED
+#define ROOTECT_OBFUSCATION_SEED 0x00000000u
+#endif
+
 static_assert(__cplusplus >= 201703L,
               "ROOTECT_HIDE needs C++17 guaranteed copy elision: Hidden is deliberately "
               "neither copyable nor movable, yet is returned by value.");
 
 namespace rootect::obf {
+
+// The build seed is a diversity input, not a secret. A different value changes the
+// keystream at every call site so a patch made for one distribution does not transfer
+// byte-for-byte to another distribution.
+constexpr unsigned kBuildSeed = static_cast<unsigned>(ROOTECT_OBFUSCATION_SEED);
+
+constexpr unsigned mix_build_seed(unsigned value) {
+    value ^= value >> 16;
+    value *= 0x7FEB352Du;
+    value ^= value >> 15;
+    value *= 0x846CA68Bu;
+    value ^= value >> 16;
+    return value;
+}
 
 // Keystream byte for position `i`, so repeated characters do not encrypt alike.
 constexpr char key_at(std::size_t i, unsigned seed) {
@@ -74,11 +92,12 @@ private:
 } // namespace rootect::obf
 
 // Yields a scoped Hidden holding the decrypted literal. __COUNTER__ gives each call site its
-// own key, so identical strings do not produce identical ciphertext.
+// own key. The build seed makes those keys differ across source-built distributions.
 #define ROOTECT_HIDE(lit)                                                             \
     ([] {                                                                             \
         constexpr unsigned _seed =                                                    \
-            (static_cast<unsigned>(__COUNTER__) * 2246822519u) ^ 0x27d4eb2fu;         \
+            ((static_cast<unsigned>(__COUNTER__) * 2246822519u) ^ 0x27d4eb2fu) ^      \
+            ::rootect::obf::mix_build_seed(::rootect::obf::kBuildSeed);               \
         static constexpr ::rootect::obf::Cipher<sizeof(lit), _seed> _c(lit);          \
         return ::rootect::obf::Hidden<sizeof(lit)>(_c);                               \
     }())

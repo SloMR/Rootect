@@ -1,3 +1,5 @@
+import java.security.SecureRandom
+
 plugins {
     alias(libs.plugins.android.library)
     `maven-publish`
@@ -7,6 +9,28 @@ plugins {
 group = providers.gradleProperty("GROUP").get()
 version = providers.gradleProperty("VERSION_NAME").get()
 
+val configuredObfuscationSeed = providers.gradleProperty("rootect.obfuscationSeed")
+    .orElse(providers.environmentVariable("ROOTECT_OBFUSCATION_SEED"))
+    .orNull
+
+val rootectObfuscationSeed = run {
+    val raw = configuredObfuscationSeed ?: "0x00000000"
+    val compact = raw.trim().replace("_", "")
+    val (digits, radix) = if (compact.startsWith("0x", ignoreCase = true)) {
+        compact.drop(2) to 16
+    } else {
+        compact to 10
+    }
+    val value = digits.toULongOrNull(radix)
+        ?: throw GradleException(
+            "rootect.obfuscationSeed must be an unsigned 32-bit decimal or hexadecimal value",
+        )
+    if (value > 0xFFFF_FFFFuL) {
+        throw GradleException("rootect.obfuscationSeed must not exceed 0xFFFFFFFF")
+    }
+    "0x${value.toString(16).uppercase().padStart(8, '0')}"
+}
+
 android {
     namespace = "io.github.rootect"
     compileSdk = 37
@@ -14,13 +38,22 @@ android {
 
     defaultConfig {
         minSdk = 24
+        buildConfigField("int", "ROOTECT_OBFUSCATION_SEED", rootectObfuscationSeed)
 
         consumerProguardFiles("consumer-rules.pro")
+
+        externalNativeBuild {
+            cmake {
+                arguments += "-DROOTECT_OBFUSCATION_SEED=$rootectObfuscationSeed"
+            }
+        }
 
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
         }
     }
+
+    buildFeatures { buildConfig = true }
 
     externalNativeBuild {
         cmake {
@@ -33,6 +66,21 @@ android {
         singleVariant("release") {
             withSourcesJar()
         }
+    }
+}
+
+tasks.register("generateRootectObfuscationSeed") {
+    group = "rootect"
+    description = "Print a random seed for a diversified Rootect native build."
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val random = SecureRandom()
+        var seed: Long
+        do {
+            seed = random.nextInt().toLong() and 0xFFFF_FFFFL
+        } while (seed == 0L)
+        logger.quiet("rootect.obfuscationSeed=0x${seed.toString(16).uppercase().padStart(8, '0')}")
     }
 }
 

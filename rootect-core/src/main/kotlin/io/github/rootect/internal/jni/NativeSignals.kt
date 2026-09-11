@@ -1,5 +1,6 @@
 package io.github.rootect.internal.jni
 
+import io.github.rootect.BuildConfig
 import io.github.rootect.signal.Signal
 import io.github.rootect.signal.SignalId
 
@@ -30,7 +31,8 @@ internal object NativeSignals {
     fun tagOf(flags: Int, inconclusive: Int, facts: Int, nonce: Int): Int {
         // Hex with toInt() rather than a decimal literal: these are unsigned constants in
         // the C++ mirror, and hand-converting them to signed is how they drift apart.
-        var x = nonce xor (flags * 0x9E3779B1.toInt()) xor ((inconclusive + 1) * 40503) xor
+        var x = nonce xor mixBuildSeed(BuildConfig.ROOTECT_OBFUSCATION_SEED) xor
+            (flags * 0x9E3779B1.toInt()) xor ((inconclusive + 1) * 40503) xor
             ((facts + 1) * 0x85EBCA77.toInt())
         x = x xor (x ushr 15)
         x *= 0x2545F491
@@ -38,6 +40,15 @@ internal object NativeSignals {
         x *= 0x27D4EB2F
         x = x xor (x ushr 16)
         return x
+    }
+
+    private fun mixBuildSeed(seed: Int): Int {
+        var x = seed
+        x = x xor (x ushr 16)
+        x *= 0x7FEB352D
+        x = x xor (x ushr 15)
+        x *= 0x846CA68B.toInt()
+        return x xor (x ushr 16)
     }
 
     /** Turns a native flags word into signals. */

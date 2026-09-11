@@ -183,7 +183,8 @@ void scan_root(ScanOutcome& out) {
 // Mixes a scan result with a caller-supplied nonce. Must stay identical to the Kotlin
 // mirror in NativeSignals.kt.
 unsigned result_tag(unsigned flags, unsigned inconclusive, unsigned facts, unsigned nonce) {
-    unsigned x = nonce ^ (flags * 2654435761u) ^ ((inconclusive + 1u) * 40503u) ^
+    unsigned x = nonce ^ obf::mix_build_seed(obf::kBuildSeed) ^ (flags * 2654435761u) ^
+                 ((inconclusive + 1u) * 40503u) ^
                  ((facts + 1u) * 2246822519u);
     x ^= x >> 15;
     x *= 0x2545F491u;
