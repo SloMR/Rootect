@@ -49,6 +49,6 @@ frida-server*
 Thumbs.db
 desktop.ini
 
-# Python bytecode from the verification scripts
+# Python bytecode
 __pycache__/
 *.pyc

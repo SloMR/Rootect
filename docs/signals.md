@@ -3,8 +3,8 @@
 Every signal Rootect emits, what it catches, and where it stops.
 
 The limits column is the point. A detection library that only lists strengths is asking to be
-believed rather than checked. Everything here was run on a rooted Pixel 5 and a clean
-emulator; nothing is listed as working that has not been observed working.
+believed rather than checked. Everything here was run on a rooted Pixel 5, a clean
+emulator, and a currently unrooted Galaxy A15; nothing is listed without observation.
 
 `SignalId` values are stable — safe to persist and send to a fraud backend. New ones get
 added; existing ones are not renamed.
@@ -15,7 +15,7 @@ added; existing ones are not renamed.
 
 | Signal | Confidence | Catches | Limits |
 |---|---|---|---|
-| `SU_BINARY` | STRONG | `su` or `busybox` on system paths, via raw syscalls | Hiding tools unmount these paths for the target app |
+| `SU_BINARY` | STRONG | `su` on system paths, via raw syscalls | Hiding tools unmount these paths for the target app |
 | `MAGISK_ARTIFACT` | STRONG | Magisk, KernelSU and APatch mount entries and files | **Does not survive Magisk DenyList + Shamiko** |
 | `SYSTEM_PARTITION_WRITABLE` | STRONG | `/system`, `/vendor`, `/product` mounted writable | Modern root is systemless and does not remount |
 | `KERNEL_ROOT_SYSCALL` | CONCLUSIVE | A kernel answering a root framework's private syscall | Kernel-side frameworks only; Magisk is not one |
@@ -39,6 +39,7 @@ already knows is the cheaper trade.
 |---|---|---|---|
 | `SELINUX_PERMISSIVE` | STRONG | SELinux not enforcing | Not a root signal — custom ROMs run permissive legitimately |
 | `BOOTLOADER_UNLOCKED` | STRONG | Verified Boot state, read three ways | Properties are rewritable on a rooted device |
+| `KNOX_WARRANTY_BIT_TRIPPED` | STRONG | Samsung reports its persistent Knox warranty fuse as tripped | Samsung only; the local property is rewritable, so Knox server attestation is authoritative |
 | `TEST_KEYS_BUILD` | WEAK | An OS not signed with a vendor release key | Common on honest custom ROMs, hence `WEAK` |
 
 These sit in `ENVIRONMENT` and never feed `isRooted`. A permissive, unlocked device is
@@ -57,7 +58,7 @@ proves nothing; it exists either way.
 | `FRIDA_THREAD_PRESENT` | STRONG | `gum-js-loop` and `pool-frida` threads in our process | Renamed threads |
 | `XPOSED_FRAMEWORK_PRESENT` | STRONG | Xposed and LSPosed | Module-level hiding |
 | `CODE_SECTION_MODIFIED` | CONCLUSIVE | Our own machine code differing from the file on disk | Instrumentation that sits above the native layer |
-| `DETECTOR_TAMPERED` | STRONG | The native layer loaded but answering incorrectly | Not raised when the library is simply absent — that is a packaging bug, counted as inconclusive |
+| `DETECTOR_TAMPERED` | STRONG | The native layer loaded but failed or returned an invalid result checksum | A targeted hook can reproduce the build-specific checksum; failure to load is only inconclusive |
 
 `CODE_SECTION_MODIFIED` is the sturdiest of these: it compares every executable page of the
 library against the file it was mapped from, so it catches the *modification* rather than the
@@ -93,8 +94,8 @@ precisely the false positive that gets a detection library removed.
 
 ## Hardware attestation
 
-Opt-in, and the only group whose verdict does not depend on the device being honest — because
-you check it on your server. See [integration.md](integration.md).
+Opt-in hardware evidence for off-device validation. Local attestation signals remain
+hookable; the server path is authoritative. See [attestation.md](attestation.md).
 
 | Signal | Confidence | Catches |
 |---|---|---|
@@ -112,7 +113,7 @@ actively rewriting them.
 
 Known limit: tools exist that forge attestation using leaked hardware keys. Checking Google's
 revocation list catches the ones Google knows about, which is most of them, and is why
-`scripts/verify-attestation.py` does it.
+`attestation-server/src/main/kotlin/io/github/rootect/attestation/AttestationServer.kt` does it.
 
 ---
 
@@ -145,10 +146,12 @@ could never fire. A signal you can enumerate is a capability being claimed.
 | Environment | Result |
 |---|---|
 | Clean emulator | No root signals — the false-positive control |
+| Galaxy A15, Android 16 | No current-root or hook signal; `KNOX_WARRANTY_BIT_TRIPPED`; Android attestation accepts current boot |
 | Rooted Pixel 5 | `CRITICAL`, root and posture signals |
 | Rooted, root actively hidden | `MAGISK_ARTIFACT` does not fire |
 | Instrumented process | Instrumentation signals fire |
 | Resigned APK | `SIGNATURE_MISMATCH` fires |
+| Frida Gadget-repacked Galaxy A15 | `FRIDA_THREAD_PRESENT` and `SIGNATURE_MISMATCH` fire; server rejects signer |
 
 The clean-device run is half the evidence. A check that flags everything passes the rooted
 test perfectly and is worthless.

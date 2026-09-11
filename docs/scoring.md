@@ -4,7 +4,7 @@ How a pile of signals becomes one number.
 
 ## Confidence weights
 
-Every signal has a fixed confidence, and confidence is just a percentage.
+Every signal has a fixed heuristic weight. It is not a measured probability.
 
 | Confidence | Weight | Means |
 |---|---|---|
@@ -21,8 +21,8 @@ Signals combine with **noisy-OR**, not addition:
 score = (1 − Π(1 − weightᵢ/100)) × 100
 ```
 
-Each signal is treated as independent evidence. The score is the chance that *at least one*
-of them is real.
+The formula rewards multiple distinct signals without simple addition. Correlated signals
+mean the result must not be read as a statistical probability.
 
 Adding instead would let five `WEAK` signals outweigh one `CONCLUSIVE` one, and five weak
 signals are exactly what an honest custom ROM produces. Noisy-OR also cannot exceed 100, so

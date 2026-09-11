@@ -21,6 +21,22 @@ nothing else. No permissions, no Google Play requirement. `minSdk 24`. Native co
 R8 and ProGuard need no configuration — the required keep rules ship inside the artifact as
 consumer rules.
 
+### Per-app native diversification
+
+Every app using the published Maven AAR receives the same precompiled native library. If
+you need a company- or app-specific binary, build Rootect from source and pass a distinct
+32-bit seed:
+
+```bash
+./gradlew :rootect-core:generateRootectObfuscationSeed -q
+./gradlew :rootect-core:assembleRelease --project-prop=rootect.obfuscationSeed=0xYOURSEED
+```
+
+You can also set `ROOTECT_OBFUSCATION_SEED` in CI. The accepted forms are decimal or
+`0x`-prefixed hexadecimal; Gradle normalises either to eight hexadecimal digits before
+passing it to CMake. The seed is not secret—it diversifies the result tag and hidden-string
+ciphertext, so source-built native binaries differ between distributions.
+
 ## Quick start
 
 ```kotlin
@@ -105,6 +121,8 @@ Rootect.analyze(
 
 SHA-256 of your release signing certificate, hex, colons optional. Without it,
 `SIGNATURE_MISMATCH` can never fire and repackaging is undetectable.
+
+The sample accepts it as `-Prootect.sampleSigningSha256=<64-hex>`.
 
 **Generate it at build time.** A pasted constant becomes wrong the day you rotate keys, and
 then every honest install reports itself repackaged with `CONCLUSIVE` confidence:
@@ -213,5 +231,9 @@ which is why overall risk is `CRITICAL`.
 ./gradlew :sample:installDebug
 ```
 
-The sample is a live dashboard of every signal, and doubles as the integration example — it
-has no dependencies beyond the library itself.
+The sample is a live dashboard of every signal and a server-gated attestation example. Local
+findings remain diagnostic; protected access stays denied until the verifier accepts a fresh
+hardware chain. It also remembers root detection and real server rejection as two encrypted,
+installation-local flags. This survives an ordinary restart, but root, reinstall, deletion, or
+rollback can defeat it; keep the authoritative history on your backend. See
+[attestation.md](attestation.md) before copying that flow.
