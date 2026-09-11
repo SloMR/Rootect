@@ -22,12 +22,13 @@ internal object NativeSignals {
         (1 shl 10) to SignalId.TRACER_ATTACHED,
         (1 shl 11) to SignalId.EMULATOR_FINGERPRINT,
         (1 shl 12) to SignalId.SELINUX_PERMISSIVE,
+        (1 shl 13) to SignalId.KNOX_WARRANTY_BIT_TRIPPED,
     )
 
     val count: Int get() = bits.size
     const val FACT_BOOT_STATE_READ: Int = 1 shl 0
 
-    /** Mirror of result_tag in detect_root.cpp. The two must stay identical. */
+    /** Result checksum. It catches simple stubs, not a targeted hook. */
     fun tagOf(flags: Int, inconclusive: Int, facts: Int, nonce: Int): Int {
         // Hex with toInt() rather than a decimal literal: these are unsigned constants in
         // the C++ mirror, and hand-converting them to signed is how they drift apart.

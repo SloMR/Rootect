@@ -20,6 +20,9 @@ public enum class SignalId(
     SELINUX_PERMISSIVE(Category.ENVIRONMENT, Confidence.STRONG),
     BOOTLOADER_UNLOCKED(Category.ENVIRONMENT, Confidence.STRONG),
 
+    /** Samsung reports its persistent Knox warranty fuse as tripped. */
+    KNOX_WARRANTY_BIT_TRIPPED(Category.ENVIRONMENT, Confidence.STRONG),
+
     /** Secure hardware reports the bootloader unlocked or boot unverified. */
     ATTESTATION_BOOT_UNVERIFIED(Category.ENVIRONMENT, Confidence.STRONG),
 

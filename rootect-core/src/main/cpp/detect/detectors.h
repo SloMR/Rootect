@@ -20,9 +20,10 @@ enum NativeSignal : unsigned {
     NS_TRACER_ATTACHED = 1u << 10,
     NS_EMULATOR = 1u << 11,
     NS_SELINUX_PERMISSIVE = 1u << 12,
+    NS_KNOX_WARRANTY_TRIPPED = 1u << 13,
 };
 
-constexpr unsigned kNativeSignalCount = 13;
+constexpr unsigned kNativeSignalCount = 14;
 
 // Not evidence.
 enum NativeFact : unsigned {

@@ -104,9 +104,11 @@ void scan_properties(ScanOutcome& out) {
     auto locked = ROOTECT_HIDE("ro.boot.flash.locked");
     auto vbmeta = ROOTECT_HIDE("ro.boot.vbmeta.device_state");
     auto tags = ROOTECT_HIDE("ro.build.tags");
+    auto warranty = ROOTECT_HIDE("ro.boot.warranty_bit");
 
     auto green = ROOTECT_HIDE("green");
     auto zero = ROOTECT_HIDE("0");
+    auto one = ROOTECT_HIDE("1");
     auto unlocked = ROOTECT_HIDE("unlocked");
     auto testkeys = ROOTECT_HIDE("test-keys");
 
@@ -130,6 +132,9 @@ void scan_properties(ScanOutcome& out) {
 
     if (prop_get(tags.c_str(), value) && contains(value, testkeys.c_str())) {
         out.flags |= NS_TEST_KEYS_BUILD;
+    }
+    if (prop_get(warranty.c_str(), value) && field_equals(value, one.c_str())) {
+        out.flags |= NS_KNOX_WARRANTY_TRIPPED;
     }
 }
 

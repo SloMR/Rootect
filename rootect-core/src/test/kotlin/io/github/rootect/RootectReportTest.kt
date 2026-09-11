@@ -44,6 +44,15 @@ class RootectReportTest {
     }
 
     @Test
+    fun `a tripped Knox fuse is posture evidence not current root`() {
+        val report = report(SignalId.KNOX_WARRANTY_BIT_TRIPPED)
+
+        assertEquals(RiskLevel.HIGH, report.risk)
+        assertFalse(report.isRooted)
+        assertEquals(0, report.scoreFor(Category.ROOT))
+    }
+
+    @Test
     fun `one conclusive root signal is enough to report rooted`() {
         val report = report(SignalId.KERNEL_ROOT_SYSCALL)
         assertTrue(report.isRooted)
