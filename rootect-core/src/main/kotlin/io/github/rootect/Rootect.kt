@@ -25,8 +25,8 @@ public object Rootect {
         var inconclusive = 0
         var bootStateRead = false
 
-        // Each detector is isolated: a detection library must not be why a host app dies.
-        // A wrong answer is evidence, a library that never loaded is only a packaging bug.
+        // Each detector is isolated: a detection library must not crash its host app.
+        // A wrong answer is evidence; a library that never loaded is a packaging problem.
         if (!NativeBridge.available) {
             inconclusive++
         } else {
@@ -42,8 +42,6 @@ public object Rootect {
                     inconclusive += scan[1]
                     bootStateRead = scan[2] and NativeSignals.FACT_BOOT_STATE_READ != 0
                 }
-            } catch (_: UnsatisfiedLinkError) {
-                inconclusive++
             } catch (_: Throwable) {
                 signals += Signal(SignalId.DETECTOR_TAMPERED)
             }

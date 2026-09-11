@@ -40,7 +40,7 @@ public enum class SignalId(
     /** Our machine code in memory no longer matches the .so on disk. */
     CODE_SECTION_MODIFIED(Category.HOOK, Confidence.CONCLUSIVE),
 
-    /** The native layer loaded but did not answer correctly — something replaced it. */
+    /** The native layer loaded but failed or returned an invalid result. */
     DETECTOR_TAMPERED(Category.HOOK, Confidence.STRONG),
 
     // ── Debuggers ─────────────────────────────────────────────────────────────
