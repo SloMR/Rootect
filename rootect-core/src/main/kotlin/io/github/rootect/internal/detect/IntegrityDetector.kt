@@ -20,7 +20,10 @@ internal object IntegrityDetector {
             signals += Signal(SignalId.DEBUGGABLE_BUILD)
         }
 
-        if (installerOf(context) !in config.trustedInstallers) {
+        // An empty allowlist disables the check rather than flagging every install.
+        if (config.trustedInstallers.isNotEmpty() &&
+            installerOf(context) !in config.trustedInstallers
+        ) {
             signals += Signal(SignalId.UNTRUSTED_INSTALLER)
         }
 

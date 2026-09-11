@@ -73,10 +73,29 @@ class IntegrityTest {
         // thing as an emulator. Conflating them asserts that real hardware is virtual.
         when (expectation) {
             "emulator" -> assertTrue("emulator not detected on the emulator", isEmulatorSignal)
-            "clean", "rooted", "rooted-hidden" ->
+            "clean", "knox-tripped", "rooted", "rooted-hidden" ->
                 assertFalse("false positive: physical device flagged as an emulator",
                     isEmulatorSignal)
         }
+    }
+
+    @Test
+    fun anEmptyInstallerAllowlistDisablesTheCheck() {
+        // Empty set = check off; a non-empty set excluding the real installer must still fire.
+        val disabled = Rootect.analyze(context, RootectConfig(trustedInstallers = emptySet()))
+        assertFalse(
+            "an empty trustedInstallers set must disable the check, not flag every install",
+            disabled.signals.any { it.id == SignalId.UNTRUSTED_INSTALLER },
+        )
+
+        val strict = Rootect.analyze(
+            context,
+            RootectConfig(trustedInstallers = setOf("com.example.no.such.store")),
+        )
+        assertTrue(
+            "a non-empty allowlist excluding the real installer should still flag it",
+            strict.signals.any { it.id == SignalId.UNTRUSTED_INSTALLER },
+        )
     }
 
     private fun currentSigningSha256(): String? = try {

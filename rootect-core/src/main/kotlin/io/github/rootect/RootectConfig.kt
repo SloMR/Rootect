@@ -5,7 +5,10 @@ public class RootectConfig @JvmOverloads constructor(
     /** SHA-256 of this app's expected signing certificate, hex, colons optional. */
     public val expectedSigningSha256: String? = null,
 
-    /** Installers treated as trusted. Anything else yields UNTRUSTED_INSTALLER. */
+    /**
+     * Installers treated as trusted. Anything else yields UNTRUSTED_INSTALLER. An empty set
+     * disables the check entirely.
+     */
     public val trustedInstallers: Set<String> = DEFAULT_TRUSTED_INSTALLERS,
 
     /** Ask the secure hardware to attest the boot state. Off by default: it is slow. */
