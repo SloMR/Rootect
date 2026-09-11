@@ -23,7 +23,6 @@ bool prop_contains(const char* key, const char* needle) {
 void scan_emulator(ScanOutcome& out) {
     auto hardware = ROOTECT_HIDE("ro.hardware");
     auto model = ROOTECT_HIDE("ro.product.model");
-    auto device = ROOTECT_HIDE("ro.product.device");
     auto qemu = ROOTECT_HIDE("ro.kernel.qemu");
 
     auto goldfish = ROOTECT_HIDE("goldfish");
@@ -31,7 +30,6 @@ void scan_emulator(ScanOutcome& out) {
     auto vbox = ROOTECT_HIDE("vbox");
     auto cutf = ROOTECT_HIDE("cutf");
     auto sdk_gphone = ROOTECT_HIDE("sdk_gphone");
-    auto generic = ROOTECT_HIDE("generic");
     auto one = ROOTECT_HIDE("1");
 
     bool found =
@@ -40,7 +38,6 @@ void scan_emulator(ScanOutcome& out) {
         prop_contains(hardware.c_str(), vbox.c_str()) ||
         prop_contains(hardware.c_str(), cutf.c_str()) ||
         prop_contains(model.c_str(), sdk_gphone.c_str()) ||
-        prop_contains(device.c_str(), generic.c_str()) ||
         prop_contains(qemu.c_str(), one.c_str());
 
     // QEMU exposes these device nodes to the guest; no physical handset has them.
