@@ -9,8 +9,8 @@ import io.github.rootect.internal.attest.HardwareAttestation
 public object RootectAttestation {
 
     /**
-     * Certificate chain answering [challenge], DER-encoded, leaf first. Issue the challenge
-     * from your server and use it once. Null means the device would not attest.
+     * Certificate chain answering a fresh 32-byte server [challenge], DER-encoded, leaf first.
+     * Null means the input was invalid or the device would not attest.
      */
     @JvmStatic
     public fun chain(challenge: ByteArray): List<ByteArray>? =

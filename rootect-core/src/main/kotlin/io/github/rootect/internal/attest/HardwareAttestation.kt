@@ -9,8 +9,7 @@ import java.security.KeyStore
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
 
-// Asks the device's secure hardware to sign a statement about its own boot state. Unlike a
-// system property, which `resetprop` rewrites, spoofing this means attacking the hardware.
+// Reads a hardware-signed boot statement. Server validation remains authoritative.
 internal object HardwareAttestation {
 
     // Google's key attestation extension.
@@ -18,6 +17,7 @@ internal object HardwareAttestation {
 
     // KeyDescription field positions.
     private const val IDX_SECURITY_LEVEL = 1
+    private const val IDX_KEYMINT_SECURITY_LEVEL = 3
     private const val IDX_CHALLENGE = 4
     private const val IDX_TEE_ENFORCED = 7
 
@@ -29,30 +29,38 @@ internal object HardwareAttestation {
     private const val IDX_BOOT_STATE = 2
 
     private const val SECURITY_LEVEL_SOFTWARE = 0
+    private const val SECURITY_LEVEL_STRONGBOX = 2
     private const val BOOT_STATE_VERIFIED = 0
+    private const val BOOT_STATE_FAILED = 3
+    private const val CHALLENGE_SIZE = 32
 
-    /** What the hardware said, or null if it would not say anything. */
+    /** What the attestation record said, or null if it could not be parsed. */
     data class Result(
         val securityLevel: Int,
-        val deviceLocked: Boolean,
-        val verifiedBootState: Int,
+        val deviceLocked: Boolean?,
+        val verifiedBootState: Int?,
         val challenge: ByteArray = ByteArray(0),
     ) {
         val isSoftwareOnly: Boolean get() = securityLevel == SECURITY_LEVEL_SOFTWARE
+        val hasRootOfTrust: Boolean get() = deviceLocked != null && verifiedBootState != null
         val isBootVerified: Boolean get() = verifiedBootState == BOOT_STATE_VERIFIED
     }
 
     /** Generates a throwaway attested key and reads the statement out of its certificate. */
     fun attest(): Result? {
-        val challenge = ByteArray(32).also { SecureRandom().nextBytes(it) }
+        val challenge = ByteArray(CHALLENGE_SIZE).also { SecureRandom().nextBytes(it) }
         val chain = chainFor(challenge) ?: return null
-        val leaf = chain.firstOrNull() ?: return null
+        return parseChain(chain, challenge)
+    }
 
-        val parsed = parse(leaf) ?: return null
-
-        // The certificate must answer *our* challenge. Without this a chain captured once
-        // could be replayed forever.
-        return if (parsed.challenge.contentEquals(challenge)) parsed else null
+    internal fun parseChain(chain: List<X509Certificate>, challenge: ByteArray): Result? {
+        if (challenge.size != CHALLENGE_SIZE || chain.isEmpty()) return null
+        val hasExtension = chain.map {
+            runCatching { it.getExtensionValue(ATTESTATION_OID) != null }.getOrDefault(false)
+        }
+        if (!hasExtension.first() || hasExtension.drop(1).any { it }) return null
+        val parsed = parse(chain.first()) ?: return null
+        return parsed.takeIf { it.challenge.contentEquals(challenge) }
     }
 
     /**
@@ -60,6 +68,7 @@ internal object HardwareAttestation {
      * On-device parsing is only as trustworthy as the process doing it.
      */
     fun chainFor(challenge: ByteArray): List<X509Certificate>? {
+        if (challenge.size != CHALLENGE_SIZE) return null
         val alias = "rootect-attest-${System.nanoTime()}"
         val keyStore = runCatching {
             KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
@@ -93,25 +102,41 @@ internal object HardwareAttestation {
     /** Pulls the security level and root of trust out of the attestation extension. */
     private fun parse(cert: X509Certificate): Result? {
         val raw = cert.getExtensionValue(ATTESTATION_OID) ?: return null
+        return parseExtension(raw)
+    }
 
+    internal fun parseExtension(raw: ByteArray): Result? {
         // The extension value is an OCTET STRING wrapping the real KeyDescription.
         val inner = Der(raw).next()?.reader()?.next() ?: return null
         val fields = inner.reader().all()
         if (fields.size <= IDX_TEE_ENFORCED) return null
 
-        val securityLevel = fields[IDX_SECURITY_LEVEL].asInt()
+        val attestationSecurityLevel = fields[IDX_SECURITY_LEVEL].asInt()
+        val keyMintSecurityLevel = fields[IDX_KEYMINT_SECURITY_LEVEL].asInt()
+        if (attestationSecurityLevel !in SECURITY_LEVEL_SOFTWARE..SECURITY_LEVEL_STRONGBOX ||
+            keyMintSecurityLevel !in SECURITY_LEVEL_SOFTWARE..SECURITY_LEVEL_STRONGBOX
+        ) return null
+        val securityLevel = minOf(attestationSecurityLevel, keyMintSecurityLevel)
         val challenge = fields[IDX_CHALLENGE].bytes()
+
+        // A software record has no trustworthy hardware rootOfTrust. Preserve that as
+        // unknown so callers emit only the software-only signal.
+        if (securityLevel == SECURITY_LEVEL_SOFTWARE) {
+            return Result(securityLevel, null, null, challenge)
+        }
 
         val rootOfTrust = fields[IDX_TEE_ENFORCED].reader().find(TAG_ROOT_OF_TRUST)
             ?.reader()?.next()?.reader()?.all()
-            ?: return Result(securityLevel, true, BOOT_STATE_VERIFIED, challenge)
+            ?: return null
 
         if (rootOfTrust.size <= IDX_BOOT_STATE) return null
+        val verifiedBootState = rootOfTrust[IDX_BOOT_STATE].asInt()
+        if (verifiedBootState !in BOOT_STATE_VERIFIED..BOOT_STATE_FAILED) return null
 
         return Result(
             securityLevel = securityLevel,
             deviceLocked = rootOfTrust[IDX_DEVICE_LOCKED].asBoolean(),
-            verifiedBootState = rootOfTrust[IDX_BOOT_STATE].asInt(),
+            verifiedBootState = verifiedBootState,
             challenge = challenge,
         )
     }
@@ -123,7 +148,7 @@ internal object HardwareAttestation {
     fun signals(result: Result, propertiesSayLocked: Boolean): List<Signal> = buildList {
         if (result.isSoftwareOnly) add(Signal(SignalId.ATTESTATION_SOFTWARE_ONLY))
 
-        if (!result.deviceLocked || !result.isBootVerified) {
+        if (result.hasRootOfTrust && (result.deviceLocked == false || !result.isBootVerified)) {
             add(Signal(SignalId.ATTESTATION_BOOT_UNVERIFIED))
 
             // The properties claim a locked, verified device while the hardware says

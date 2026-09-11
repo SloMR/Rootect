@@ -39,8 +39,10 @@ class AttestationTest {
         // the likeliest way this breaks silently.
         assertTrue("security level out of range: ${result!!.securityLevel}",
             result.securityLevel in 0..2)
-        assertTrue("boot state out of range: ${result.verifiedBootState}",
-            result.verifiedBootState in 0..3)
+        assertTrue(
+            "boot state missing or out of range: ${result.verifiedBootState}",
+            result.isSoftwareOnly || result.verifiedBootState?.let { it in 0..3 } == true,
+        )
     }
 
     @Test
@@ -79,13 +81,16 @@ class AttestationTest {
         // the parse is reading the wrong field, not that the device relocked itself.
         assertTrue(
             "hardware reported a locked, verified device on a device known to be unlocked",
-            !result!!.deviceLocked || !result.isBootVerified,
+            result!!.deviceLocked == false || !result.isBootVerified,
         )
     }
 
     @Test
     fun aLockedDeviceIsReportedByHardware() {
-        assumeTrue("set rootectExpect=clean to run this", expectation == "clean")
+        assumeTrue(
+            "set a locked-device rootectExpect profile to run this",
+            expectation == "clean" || expectation == "knox-tripped",
+        )
 
         val result = HardwareAttestation.attest()
         assumeTrue("device produced no attestation", result != null)
@@ -94,7 +99,7 @@ class AttestationTest {
         // rather than returning the same answer whatever the hardware said.
         assertTrue(
             "hardware reported an unlocked or unverified device on a stock device",
-            result!!.deviceLocked && result.isBootVerified,
+            result!!.deviceLocked == true && result.isBootVerified,
         )
     }
 
@@ -111,7 +116,7 @@ class AttestationTest {
         )
 
         // Properties claiming locked while the hardware says otherwise is the spoof case.
-        if (!result.deviceLocked || !result.isBootVerified) {
+        if (result.hasRootOfTrust && (result.deviceLocked == false || !result.isBootVerified)) {
             val spoofed = HardwareAttestation.signals(result, propertiesSayLocked = true)
             assertTrue(
                 "hardware contradicted the properties but nothing was raised",
