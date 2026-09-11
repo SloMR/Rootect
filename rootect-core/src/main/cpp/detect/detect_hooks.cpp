@@ -280,4 +280,11 @@ void scan_hooks(ScanOutcome& out) {
     scan_own_code(out);
 }
 
+#ifndef NDEBUG
+// Debug only. Instrumentation flags scan_maps would set for a mapped file path.
+unsigned maps_probe(const char* path) {
+    return instrumentation_flags(basename_of(path));
+}
+#endif
+
 } // namespace rootect

@@ -45,6 +45,11 @@ void scan_root(ScanOutcome& out);
 void scan_hooks(ScanOutcome& out);
 void scan_emulator(ScanOutcome& out);
 
+#ifndef NDEBUG
+// Debug-only probe: instrumentation flags scan_maps would set for a mapped file path.
+unsigned maps_probe(const char* path);
+#endif
+
 // Mixes a scan result with a caller-supplied nonce. Kotlin re-derives this and treats a
 // mismatch as evidence, so replacing the JNI entry point is no longer free.
 unsigned result_tag(unsigned flags, unsigned inconclusive, unsigned facts, unsigned nonce);

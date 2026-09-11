@@ -2,7 +2,7 @@ package io.github.rootect
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import io.github.rootect.internal.jni.NativeBridge
+import io.github.rootect.internal.jni.NativeProbes
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -20,11 +20,11 @@ class NativeBridgeTest {
         File(dir, name).apply { writeText(content) }.absolutePath
 
     // error, truncated, lines
-    private fun probe(path: String) = NativeBridge.parserProbe(path)
+    private fun probe(path: String) = NativeProbes.parserProbe(path)
 
     @Test
     fun foundationSelfTestPasses() {
-        assertTrue(NativeBridge.selfTest())
+        assertTrue(NativeProbes.selfTest())
     }
 
     @Test
@@ -98,7 +98,7 @@ class NativeBridgeTest {
 
     @Test
     fun pathProbeSeparatesAbsentFromPresent() {
-        assertEquals(0, NativeBridge.pathProbe(dir.absolutePath))
-        assertEquals(-2, NativeBridge.pathProbe(File(dir, "nope").absolutePath))
+        assertEquals(0, NativeProbes.pathProbe(dir.absolutePath))
+        assertEquals(-2, NativeProbes.pathProbe(File(dir, "nope").absolutePath))
     }
 }

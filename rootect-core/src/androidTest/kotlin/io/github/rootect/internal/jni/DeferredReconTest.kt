@@ -3,7 +3,7 @@ package io.github.rootect
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import io.github.rootect.internal.jni.NativeBridge
+import io.github.rootect.internal.jni.NativeProbes
 import java.io.File
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,10 +29,10 @@ class DeferredReconTest {
     fun selinuxVisibility() {
         log("1 SELinux") {
             appendLine("enforce content   : '${read("/sys/fs/selinux/enforce")}'")
-            appendLine("enforce probe     : ${NativeBridge.pathProbe("/sys/fs/selinux/enforce")}")
+            appendLine("enforce probe     : ${NativeProbes.pathProbe("/sys/fs/selinux/enforce")}")
             appendLine("own context       : '${read("/proc/self/attr/current")}'")
-            appendLine("policy probe      : ${NativeBridge.pathProbe("/sys/fs/selinux/policy")}")
-            appendLine("selinuxfs probe   : ${NativeBridge.pathProbe("/sys/fs/selinux")}")
+            appendLine("policy probe      : ${NativeProbes.pathProbe("/sys/fs/selinux/policy")}")
+            appendLine("selinuxfs probe   : ${NativeProbes.pathProbe("/sys/fs/selinux")}")
         }
     }
 
@@ -51,7 +51,7 @@ class DeferredReconTest {
         log("2 property serials") {
             appendLine("%-32s %6s %10s %6s %8s".format("name", "found", "serial", "len", "counter"))
             for (name in props) {
-                val (found, serial, len) = NativeBridge.propProbe(name).let {
+                val (found, serial, len) = NativeProbes.propProbe(name).let {
                     Triple(it[0], it[1], it[2])
                 }
                 appendLine(
@@ -67,7 +67,7 @@ class DeferredReconTest {
     fun procOneVisibility() {
         log("3 /proc/1 under hidepid") {
             for (p in listOf("/proc/1", "/proc/1/mountinfo", "/proc/1/maps", "/proc/1/stat")) {
-                appendLine("%-20s %d".format(p, NativeBridge.pathProbe(p)))
+                appendLine("%-20s %d".format(p, NativeProbes.pathProbe(p)))
             }
             // Whether any pid outside our own uid is visible at all.
             val visible = File("/proc").list()?.filter { it.all(Char::isDigit) }?.map(String::toInt)
@@ -83,7 +83,7 @@ class DeferredReconTest {
         // its host. This is the permission-free alternative, and it sees any port.
         log("5 listening sockets") {
             for (f in listOf("/proc/net/tcp", "/proc/net/tcp6")) {
-                appendLine("$f probe ${NativeBridge.pathProbe(f)}")
+                appendLine("$f probe ${NativeProbes.pathProbe(f)}")
                 val listening = runCatching {
                     File(f).readLines().drop(1)
                         .map { it.trim().split(Regex("\\s+")) }

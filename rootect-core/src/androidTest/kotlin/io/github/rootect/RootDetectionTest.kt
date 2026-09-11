@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.rootect.internal.jni.NativeBridge
+import io.github.rootect.internal.jni.NativeProbes
 import io.github.rootect.internal.jni.NativeSignals
 import io.github.rootect.signal.Category
 import io.github.rootect.signal.SignalId
@@ -23,7 +24,7 @@ class RootDetectionTest {
     fun nativeAndKotlinAgreeOnTheSignalBits() {
         // Hand-maintained contract across the JNI boundary; fails the moment one side
         // gains a signal the other does not know about.
-        assertEquals(NativeBridge.nativeSignalCount(), NativeSignals.count)
+        assertEquals(NativeProbes.nativeSignalCount(), NativeSignals.count)
     }
 
     @Test
@@ -37,6 +38,24 @@ class RootDetectionTest {
             listOf(SignalId.MAGISK_ARTIFACT),
             NativeSignals.decode(1 shl 1).map { it.id },
         )
+    }
+
+    @Test
+    fun scanMapsMatchesArtifactsByBasenameNotPackagePath() {
+        // Debug probe over the real basename/token matcher: a package path that merely contains a
+        // signal word must not match; a default artifact filename must.
+        fun ids(path: String) = NativeSignals.decode(NativeProbes.mapsProbe(path)).map { it.id }
+
+        assertTrue("com.example.friday flagged as Frida",
+            ids("/data/app/~~a/com.example.friday-1/base.apk").isEmpty())
+        assertTrue("com.example.gadget flagged as Frida",
+            ids("/data/app/~~a/com.example.gadget-1/base.apk").isEmpty())
+        assertTrue("real Frida agent missed",
+            SignalId.FRIDA_LIBRARY_MAPPED in ids("/data/local/tmp/re.frida.server/frida-agent-64.so"))
+        assertTrue("gadget library missed",
+            SignalId.FRIDA_LIBRARY_MAPPED in ids("/system/lib64/libgadget.so"))
+        assertTrue("XposedBridge missed",
+            SignalId.XPOSED_FRAMEWORK_PRESENT in ids("/system/framework/XposedBridge.jar"))
     }
 
     @Test
@@ -105,6 +124,7 @@ class RootDetectionTest {
     //     rooted         rooted phone, root visible
     //     rooted-hidden  rooted phone, root actively hidden from us
     //     clean          unmodified physical device
+    //     knox-tripped   unrooted Samsung with its warranty fuse tripped
     //     emulator       clean emulator
     // Unset skips them all, so an accidental CI run cannot assert something untrue.
     private val expectation: String?
@@ -134,6 +154,23 @@ class RootDetectionTest {
     }
 
     @Test
+    fun knoxWarrantyBitMatchesTheDeviceProfile() {
+        assumeTrue(
+            "set rootectExpect=knox-tripped, clean, or emulator to run this",
+            expectation == "knox-tripped" || expectation == "clean" || expectation == "emulator",
+        )
+
+        val found = Rootect.analyze(context).signals.any {
+            it.id == SignalId.KNOX_WARRANTY_BIT_TRIPPED
+        }
+        if (expectation == "knox-tripped") {
+            assertTrue("tripped Knox warranty bit was missed", found)
+        } else {
+            assertTrue("Knox warranty bit false positive", !found)
+        }
+    }
+
+    @Test
     fun uninstrumentedProcessReportsNoHookEvidence() {
         // The control most likely to misfire: a mistake in the CODE_SECTION_MODIFIED
         // comparison shows up here as a CONCLUSIVE signal on an ordinary process.
@@ -148,8 +185,8 @@ class RootDetectionTest {
     @Test
     fun cleanDeviceReportsNoRootEvidence() {
         assumeTrue(
-            "set rootectExpect=clean or emulator to run this",
-            expectation == "clean" || expectation == "emulator",
+            "set a clean-device rootectExpect profile to run this",
+            expectation == "clean" || expectation == "knox-tripped" || expectation == "emulator",
         )
 
         val report = Rootect.analyze(context)
