@@ -70,7 +70,7 @@ do not trip it — deliberately, because two mildly odd things are a Tuesday.
 ## The trap this creates
 
 A category score and the overall score answer different questions, and they can disagree
-loudly. Measured on a rooted Pixel 5 with Magisk DenyList active:
+loudly. Measured on a rooted phone with Magisk DenyList active:
 
 ```
 risk = CRITICAL   score = 94   isRooted = false

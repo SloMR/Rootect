@@ -202,7 +202,7 @@ you can stop after the ones you need — `new RootectConfig("AB:CD:…")` is val
 ### Rollups and their trap
 
 The rollups are per-category thresholds, and they are deliberately conservative. Measured on
-a rooted Pixel 5 with root actively hidden:
+a rooted phone with root actively hidden:
 
 ```
 risk = CRITICAL   score = 94   isRooted = false

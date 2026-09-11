@@ -3,8 +3,8 @@
 Every signal Rootect emits, what it catches, and where it stops.
 
 The limits column is the point. A detection library that only lists strengths is asking to be
-believed rather than checked. Everything here was run on a rooted Pixel 5, a clean
-emulator, and a currently unrooted Galaxy A15; nothing is listed without observation.
+believed rather than checked. Everything here was run on a rooted phone (Magisk), a clean
+emulator, and an unrooted Samsung with a tripped Knox bit; nothing is listed without observation.
 
 `SignalId` values are stable — safe to persist and send to a fraud backend. New ones get
 added; existing ones are not renamed.
@@ -146,12 +146,12 @@ could never fire. A signal you can enumerate is a capability being claimed.
 | Environment | Result |
 |---|---|
 | Clean emulator | No root signals — the false-positive control |
-| Galaxy A15, Android 16 | No current-root or hook signal; `KNOX_WARRANTY_BIT_TRIPPED`; Android attestation accepts current boot |
-| Rooted Pixel 5 | `CRITICAL`, root and posture signals |
+| Unrooted Samsung (Knox tripped) | No current-root or hook signal; `KNOX_WARRANTY_BIT_TRIPPED`; Android attestation accepts current boot |
+| Rooted phone | `CRITICAL`, root and posture signals |
 | Rooted, root actively hidden | `MAGISK_ARTIFACT` does not fire |
 | Instrumented process | Instrumentation signals fire |
 | Resigned APK | `SIGNATURE_MISMATCH` fires |
-| Frida Gadget-repacked Galaxy A15 | `FRIDA_THREAD_PRESENT` and `SIGNATURE_MISMATCH` fire; server rejects signer |
+| Frida Gadget-repacked Samsung | `FRIDA_THREAD_PRESENT` and `SIGNATURE_MISMATCH` fire; server rejects signer |
 
 The clean-device run is half the evidence. A check that flags everything passes the rooted
 test perfectly and is worthless.

@@ -65,7 +65,7 @@ on a clean phone and it verifies perfectly.
 
 ## What the chain looks like
 
-Leaf first, root last. Real output from a Galaxy A15:
+Leaf first, root last. Real output from a test device:
 
 ```
  attest-0.der   leaf — "Android Keystore Key"
@@ -85,8 +85,8 @@ Leaf first, root last. Real output from a Galaxy A15:
  attest-4.der   ROOT — "Key Attestation CA1"   ← pin this
 ```
 
-Chain length varies by vendor and provisioning method. A Pixel 5 produced 4 certificates; the
-Galaxy A15 produced 5. Accept a bounded list rather than one fixed length, then walk to the end.
+Chain length varies by vendor and provisioning method. One device produced 4 certificates;
+another produced 5. Accept a bounded list rather than one fixed length, then walk to the end.
 
 Rootect puts the statement in the target leaf. The verifier requires exactly that shape and
 rejects an attestation extension on any issuer, preventing a signed-child extension attack.
@@ -102,7 +102,7 @@ adds and audits that trust anchor.
 is separate. It uses Samsung Attestation Keys, the Knox Warranty Bit, Samsung roots and a
 Samsung attestation service. Rootect does not implement that proprietary flow.
 
-The tested Galaxy A15 showed why this matters: standard Android attestation accepted its
+A tested Samsung showed why this matters: standard Android attestation accepted its
 locked, Verified current boot while `ro.boot.warranty_bit=1` reported historical Knox
 tampering. Rootect emits `KNOX_WARRANTY_BIT_TRIPPED` locally, but only Knox Enhanced
 Attestation can make that historical verdict authoritative off-device.
@@ -157,7 +157,7 @@ Reject on the first failure:
 
 **There are currently two roots in force.** The older RSA-4096 root, and *Key Attestation
 CA1* (P-384), effective 2026-02-01. Pin both. Recently provisioned devices use the newer one:
-the Galaxy A15 above chains to it, and pinning only the older root would have rejected a
+the Samsung above chains to it, and pinning only the older root would have rejected a
 currently locked, Verified phone.
 
 The authoritative lists are:
@@ -237,7 +237,7 @@ a local check.
 
 Same code, two devices, opposite answers:
 
-| | Pixel 5, rooted | Galaxy A15, current boot |
+| | Rooted phone | Samsung, current boot |
 |---|---|---|
 | Root pinned | RSA-4096 | Key Attestation CA1 |
 | Security level | TrustedEnvironment | TrustedEnvironment |
