@@ -34,10 +34,25 @@ jobs:
       - name: Unit tests
         run: ./gradlew :rootect-core:test
 
+      - name: Checkout Google's attestation verifier
+        uses: actions/checkout@v4
+        with:
+          repository: android/keyattestation
+          path: .keyattestation
+
+      - name: Attestation server tests
+        run: ./gradlew :attestation-server:test -PkeyAttestationPath=.keyattestation
+
       # Release, because that is the build that ships: R8 runs, NDEBUG strips the debug JNI
       # probes, and the optimiser gets its chance to undo the string hiding.
       - name: Build release
-        run: ./gradlew :rootect-core:assembleRelease :sample:assembleRelease
+        env:
+          ROOTECT_REPOSITORY_ID: ${{ github.repository_id }}
+        run: |
+          printf -v ROOTECT_OBFUSCATION_SEED '0x%08X' \
+            "$((ROOTECT_REPOSITORY_ID & 0xFFFFFFFF))"
+          export ROOTECT_OBFUSCATION_SEED
+          ./gradlew :rootect-core:assembleRelease :sample:assembleRelease
 
       - name: Check for plaintext detection strings
         run: bash scripts/check-no-plaintext.sh
@@ -97,4 +112,5 @@ jobs:
           target: google_apis
           script: >
             ./gradlew :rootect-core:connectedDebugAndroidTest
+            -Prootect.obfuscationSeed=0xA5C39E17
             -Pandroid.testInstrumentationRunnerArguments.rootectExpect=emulator
