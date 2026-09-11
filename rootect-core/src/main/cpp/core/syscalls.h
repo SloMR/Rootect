@@ -110,9 +110,13 @@ static inline long rt_prctl(long opt, long a1, long a2, long a3, long a4) {
 }
 
 // Reads directory entries. Used to walk /proc/self/task, which has no fixed listing.
+// Retries on EINTR so a signal mid-enumeration is not mistaken for the end of the directory.
 static inline long rt_getdents64(int fd, void* buf, unsigned long len) {
-    return rt_syscall(__NR_getdents64, fd, reinterpret_cast<long>(buf),
-                      static_cast<long>(len), 0, 0, 0);
+    for (;;) {
+        long n = rt_syscall(__NR_getdents64, fd, reinterpret_cast<long>(buf),
+                            static_cast<long>(len), 0, 0, 0);
+        if (n != -EINTR) return n;
+    }
 }
 
 // Positional read, so comparing a file against its own mapping needs no seek state.
