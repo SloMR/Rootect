@@ -20,6 +20,9 @@ public enum class SignalId(
     SELINUX_PERMISSIVE(Category.ENVIRONMENT, Confidence.STRONG),
     BOOTLOADER_UNLOCKED(Category.ENVIRONMENT, Confidence.STRONG),
 
+    /** The Developer options toggle is on. Common on honest devices, so posture not proof. */
+    DEVELOPER_OPTIONS_ENABLED(Category.ENVIRONMENT, Confidence.WEAK),
+
     /** Samsung reports its persistent Knox warranty fuse as tripped. */
     KNOX_WARRANTY_BIT_TRIPPED(Category.ENVIRONMENT, Confidence.STRONG),
 

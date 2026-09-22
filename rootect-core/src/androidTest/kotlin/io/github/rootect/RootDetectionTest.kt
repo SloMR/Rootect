@@ -1,8 +1,11 @@
 package io.github.rootect
 
+import android.content.ContentResolver
+import android.content.ContextWrapper
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.rootect.internal.detect.SettingsDetector
 import io.github.rootect.internal.jni.NativeBridge
 import io.github.rootect.internal.jni.NativeProbes
 import io.github.rootect.internal.jni.NativeSignals
@@ -168,6 +171,56 @@ class RootDetectionTest {
         } else {
             assertTrue("Knox warranty bit false positive", !found)
         }
+    }
+
+    // Developer options state, passed in deliberately rather than guessed, like rootectExpect:
+    //   -e rootectDevOptions on|off
+    private val devOptionsExpectation: String?
+        get() = InstrumentationRegistry.getArguments().getString("rootectDevOptions")
+
+    @Test
+    fun developerOptionsSignalMatchesTheDeviceProfile() {
+        val expect = devOptionsExpectation
+        assumeTrue("set rootectDevOptions=on or off to run this", expect == "on" || expect == "off")
+
+        val found = Rootect.analyze(context).signals.any {
+            it.id == SignalId.DEVELOPER_OPTIONS_ENABLED
+        }
+        if (expect == "on") {
+            assertTrue("Developer options are on but DEVELOPER_OPTIONS_ENABLED did not fire", found)
+        } else {
+            assertTrue("DEVELOPER_OPTIONS_ENABLED false positive with Developer options off", !found)
+        }
+    }
+
+    @Test
+    fun unreadableDeveloperOptionsAreInconclusive() {
+        var resolverReads = 0
+        val restrictedContext = object : ContextWrapper(context) {
+            override fun getContentResolver(): ContentResolver {
+                resolverReads++
+                throw SecurityException("Settings unavailable")
+            }
+        }
+
+        // A successful 0/1 is a real answer. Absence and a denied read are both inconclusive,
+        // so the restricted scan must add a count only when the baseline actually answered.
+        val settingsAnswered = runCatching { SettingsDetector.detect(context) }.isSuccess
+        val baseline = Rootect.analyze(context)
+        val restricted = Rootect.analyze(restrictedContext)
+
+        assertEquals("the settings read must be attempted", 1, resolverReads)
+        val extraInconclusive = if (settingsAnswered) 1 else 0
+        assertEquals(baseline.inconclusiveChecks + extraInconclusive, restricted.inconclusiveChecks)
+        if (!settingsAnswered) {
+            assertTrue(
+                "an absent developer-options setting must be inconclusive",
+                baseline.inconclusiveChecks > 0,
+            )
+        }
+        assertTrue(restricted.signals.none { it.id == SignalId.DEVELOPER_OPTIONS_ENABLED })
+        assertEquals(baseline.scoreFor(Category.ROOT), restricted.scoreFor(Category.ROOT))
+        assertEquals(baseline.isRooted, restricted.isRooted)
     }
 
     @Test

@@ -27,6 +27,8 @@ internal object SignalCopy {
             "SELinux is not enforcing."
         SignalId.BOOTLOADER_UNLOCKED ->
             "Verified Boot reports the bootloader is unlocked."
+        SignalId.DEVELOPER_OPTIONS_ENABLED ->
+            "Developer options are enabled on this device."
         SignalId.KNOX_WARRANTY_BIT_TRIPPED ->
             "Samsung's Knox warranty fuse reports historical device tampering."
         SignalId.ATTESTATION_BOOT_UNVERIFIED ->

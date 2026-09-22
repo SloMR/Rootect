@@ -5,6 +5,7 @@ import io.github.rootect.internal.attest.HardwareAttestation
 import io.github.rootect.internal.detect.IntegrityDetector
 import io.github.rootect.internal.detect.PackageDetector
 import io.github.rootect.internal.detect.RuntimeDetector
+import io.github.rootect.internal.detect.SettingsDetector
 import io.github.rootect.internal.jni.NativeBridge
 import io.github.rootect.internal.jni.NativeSignals
 import io.github.rootect.signal.Signal
@@ -55,6 +56,12 @@ public object Rootect {
 
         try {
             signals += RuntimeDetector.detect()
+        } catch (_: Throwable) {
+            inconclusive++
+        }
+
+        try {
+            signals += SettingsDetector.detect(context)
         } catch (_: Throwable) {
             inconclusive++
         }
