@@ -41,6 +41,7 @@ class MainActivity : Activity() {
         "Protected access stays paused until the server answers.",
     )
     private var verificationInFlight = false
+    private var scanInFlight = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,7 +61,6 @@ class MainActivity : Activity() {
             },
         )
         rescan()
-        verifyOffDevice()
     }
 
     /** The whole integration: one call, optionally configured. */
@@ -76,10 +76,23 @@ class MainActivity : Activity() {
 
     /** Refreshes local evidence without changing the server decision. */
     private fun rescan() {
-        val report = scan()
-        lastReport = report
-        if (report.isRooted) LocalSecurityHistory.rememberRootDetection(this)
+        if (scanInFlight) return
+        scanInFlight = true
+        val firstScan = lastReport == null
         render()
+        Thread {
+            val report = runCatching { scan() }.getOrNull()
+            if (report?.isRooted == true) {
+                runCatching { LocalSecurityHistory.rememberRootDetection(applicationContext) }
+            }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (report != null) lastReport = report
+                scanInFlight = false
+                render()
+                if (firstScan) verifyOffDevice()
+            }
+        }.start()
     }
 
     /** Rebuilds the dashboard from its current local and server state. */
@@ -412,6 +425,7 @@ class MainActivity : Activity() {
     private fun rescanButton(): View = Button(this).apply {
         text = "Re-scan"
         isAllCaps = false
+        isEnabled = !scanInFlight
         backgroundTintList = ColorStateList.valueOf(PRIMARY)
         setTextColor(Color.WHITE)
         setOnClickListener { rescan() }
