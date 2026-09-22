@@ -77,8 +77,9 @@ class AttestationTest {
         val result = HardwareAttestation.attest()
         assumeTrue("device produced no attestation", result != null)
 
-        // The lab device has an unlocked bootloader. Hardware saying otherwise would mean
-        // the parse is reading the wrong field, not that the device relocked itself.
+        // The lab device's secure hardware reports an unlocked or unverified boot, including
+        // when its properties have been rewritten to look locked. A locked, verified answer
+        // would mean the parse is reading the wrong field.
         assertTrue(
             "hardware reported a locked, verified device on a device known to be unlocked",
             result!!.deviceLocked == false || !result.isBootVerified,
