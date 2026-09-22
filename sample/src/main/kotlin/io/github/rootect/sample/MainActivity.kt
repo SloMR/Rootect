@@ -88,7 +88,7 @@ class MainActivity : Activity() {
         container.removeAllViews()
 
         container.addView(appHeader())
-        container.addView(banner(report))
+        container.addView(summaryRow(report))
         container.addView(
             sectionHeading(
                 "LOCAL EVIDENCE",
@@ -235,74 +235,80 @@ class MainActivity : Activity() {
         )
     }
 
-    private fun banner(report: RootectReport): View = LinearLayout(this).apply {
-        val risk = if (serverDecision.state == AttestationState.REJECTED) {
-            RiskLevel.CRITICAL
-        } else {
-            report.risk
+    // Keep local risk and the server verdict separate; stack the tiles when text needs room.
+    private fun summaryRow(report: RootectReport): View = LinearLayout(this).apply {
+        // Measure the longest headline at the current font scale, including both tiles'
+        // padding, the gap, and the row's outer padding.
+        val headlineWidth = text("UNVERIFIED", size = 24f, bold = true)
+            .paint.measureText("UNVERIFIED")
+        val sideBySide = resources.configuration.screenWidthDp * resources.displayMetrics.density >=
+            2 * (headlineWidth + dp(32)) + dp(44)
+        orientation = if (sideBySide) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
+        setPadding(dp(16), dp(16), dp(16), dp(8))
+        listOf(riskTile(report), attestationTile()).forEachIndexed { index, tile ->
+            tile.layoutParams = if (sideBySide) {
+                LinearLayout.LayoutParams(0, MATCH_PARENT, 1f).apply {
+                    if (index == 0) marginEnd = dp(6) else marginStart = dp(6)
+                }
+            } else {
+                LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
+                    if (index > 0) topMargin = dp(12)
+                }
+            }
+            addView(tile)
         }
-        val label = when (serverDecision.state) {
-            AttestationState.CHECKING -> "VERIFYING"
-            AttestationState.UNAVAILABLE -> "UNVERIFIED"
-            else -> risk.name
+    }
+
+    private fun riskTile(report: RootectReport): View {
+        val colour = colourFor(report.risk)
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = panelBackground(colour, colour)
+            elevation = dp(3).toFloat()
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+            addView(text("LOCAL RISK", size = 11f, bold = true, colour = WHITE_MUTED).apply {
+                letterSpacing = 0.12f
+            })
+            addView(text(report.risk.name, size = 24f, bold = true, colour = Color.WHITE).apply {
+                setPadding(0, dp(6), 0, dp(2))
+            })
+            addView(text("${report.score} / 100", size = 15f, bold = true, colour = WHITE_MUTED))
         }
-        val bannerColour = when (serverDecision.state) {
+    }
+
+    // The server verdict, condensed to one word; the detail lives in attestationPanel below.
+    private fun attestationTile(): View {
+        val colour = when (serverDecision.state) {
+            AttestationState.TRUSTED -> TRUSTED_ACCENT
+            AttestationState.REJECTED -> REJECTED_ACCENT
             AttestationState.CHECKING,
             AttestationState.UNAVAILABLE -> WARNING_BANNER
-            else -> colourFor(risk)
         }
-        orientation = LinearLayout.VERTICAL
-        background = panelBackground(bannerColour, bannerColour)
-        elevation = dp(3).toFloat()
-        setPadding(dp(20), dp(22), dp(20), dp(20))
-        layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
-            setMargins(dp(16), dp(16), dp(16), dp(8))
+        val label = when (serverDecision.state) {
+            AttestationState.TRUSTED -> "VERIFIED"
+            AttestationState.REJECTED -> "REJECTED"
+            AttestationState.CHECKING -> "VERIFYING"
+            AttestationState.UNAVAILABLE -> "UNVERIFIED"
         }
-
-        addView(text("SECURITY STATUS", size = 11f, bold = true, colour = WHITE_MUTED).apply {
-            letterSpacing = 0.14f
-        })
-        addView(text(label, size = 34f, bold = true, colour = Color.WHITE).apply {
-            setPadding(0, dp(5), 0, dp(2))
-        })
-        addView(
-            text(
-                when (serverDecision.state) {
-                    AttestationState.CHECKING -> "Waiting for hardware attestation"
-                    AttestationState.REJECTED -> "Hardware attestation rejected by the server"
-                    AttestationState.UNAVAILABLE -> "Attestation server unavailable"
-                    AttestationState.TRUSTED -> "Hardware verified · local score ${report.score} / 100"
-                },
-                size = 14f,
-                colour = WHITE_MUTED,
-            ),
-        )
-
-        val verdicts = buildList {
-            when (serverDecision.state) {
-                AttestationState.CHECKING -> add("protected access paused")
-                AttestationState.TRUSTED -> add("hardware verified")
-                AttestationState.REJECTED -> add("attestation rejected")
-                AttestationState.UNAVAILABLE -> add("protected access paused")
-            }
-            if (report.isRooted) add("rooted")
-            if (report.isHooked) add("hooked")
-            if (report.isTampered) add("tampered")
-            if (report.isEmulator) add("emulator")
-            if (report.isDebugged) add("debugged")
+        val sub = when (serverDecision.state) {
+            AttestationState.TRUSTED -> "Access granted"
+            AttestationState.REJECTED -> "Access denied"
+            AttestationState.CHECKING -> "Awaiting server"
+            AttestationState.UNAVAILABLE -> serverDecision.title
         }
-        addView(
-            text(
-                when {
-                    verdicts.isNotEmpty() -> verdicts.joinToString(" · ")
-                    report.signals.isEmpty() -> "no local verdicts raised"
-                    else -> "local evidence needs review"
-                },
-                size = 13f,
-                bold = true,
-                colour = Color.WHITE,
-            ).apply { setPadding(0, dp(12), 0, 0) },
-        )
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = panelBackground(colour, colour)
+            elevation = dp(3).toFloat()
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+            addView(text("ATTESTATION", size = 11f, bold = true, colour = WHITE_MUTED).apply {
+                letterSpacing = 0.12f
+            })
+            addView(text(label, size = 24f, bold = true, colour = Color.WHITE).apply {
+                setPadding(0, dp(6), 0, dp(2))
+            })
+            addView(text(sub, size = 13f, colour = WHITE_MUTED))
+        }
     }
 
     private fun sectionHeading(title: String, subtitle: String): View =
