@@ -111,14 +111,14 @@ data class AttestationVerdict(
     val attestationTrusted: Boolean,
     val reasons: List<String>,
     val certificates: Int,
+    val reportedSignals: List<String> = emptyList(),
 )
 
-// Untrusted client-reported evidence; never gates access. Nullable for lenient JSON parsing.
-data class ClientReport(val isRooted: Boolean? = null)
-
-// Client claims clean while its own validated chain reports unlocked/unverified.
-internal fun contradicts(report: ClientReport?, hardwareCompromised: Boolean): Boolean =
-    report?.isRooted == false && hardwareCompromised
+// Untrusted client telemetry. Echoed in the verdict and never used to grant access.
+data class ClientReport(
+    val isRooted: Boolean? = null,
+    val signals: List<String>? = null,
+)
 
 fun interface EvidenceVerifier {
     fun verify(challenge: ByteArray, chainDer: List<ByteArray>?, report: ClientReport?): AttestationVerdict
@@ -172,12 +172,7 @@ class AttestationVerifier(
         val trusted = success != null &&
             success.deviceLocked &&
             success.verifiedBootState == VerifiedBootState.VERIFIED
-        if (trusted) return AttestationVerdict(true, emptyList(), count)
-        val reasons = buildList {
-            add("attestation rejected")
-            if (contradicts(report, success != null)) add("client contradicts hardware")
-        }
-        return AttestationVerdict(false, reasons, count)
+        return verdictForHardware(trusted, count, report)
     }
 
     private fun checkedRevocations(): Set<String> = try {
@@ -397,8 +392,32 @@ private suspend fun ApplicationCall.respondJson(status: HttpStatusCode, value: A
     respondText(json.toJson(value), ContentType.Application.Json, status)
 }
 
-private fun rejected(reason: String, count: Int = 0) =
-    AttestationVerdict(false, listOf(reason), count)
+private fun rejected(
+    reason: String,
+    count: Int = 0,
+    reportedSignals: List<String> = emptyList(),
+) = AttestationVerdict(false, listOf(reason), count, reportedSignals)
+
+internal fun verdictForHardware(
+    trusted: Boolean,
+    count: Int,
+    report: ClientReport?,
+): AttestationVerdict {
+    val reported = report.reportedSignalNames()
+    if (trusted) return AttestationVerdict(true, emptyList(), count, reported)
+    // Unlocked boot is not proof of root or of a forged client report.
+    return rejected("attestation rejected", count, reported)
+}
+
+private val SIGNAL_NAME = Regex("^[A-Z][A-Z0-9_]{0,63}$")
+
+private fun ClientReport?.reportedSignalNames(): List<String> =
+    this?.signals
+        .orEmpty()
+        .filterNotNull()
+        .filter { it.length <= 64 && SIGNAL_NAME.matches(it) }
+        .distinct()
+        .take(32)
 
 private fun requiredEnvironment(name: String): String =
     System.getenv(name)?.trim()?.takeIf(String::isNotEmpty) ?: error("$name is required")

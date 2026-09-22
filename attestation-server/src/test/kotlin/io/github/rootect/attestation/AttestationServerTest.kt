@@ -167,11 +167,63 @@ class AttestationServerTest {
     }
 
     @Test
-    fun contradictionFlagsAClientThatLiesAgainstItsHardware() {
-        assertTrue(contradicts(ClientReport(isRooted = false), hardwareCompromised = true))
-        assertFalse(contradicts(ClientReport(isRooted = true), hardwareCompromised = true))
-        assertFalse(contradicts(ClientReport(isRooted = false), hardwareCompromised = false))
-        assertFalse(contradicts(null, hardwareCompromised = true))
+    fun clientRootClaimsCannotChangeTheHardwareVerdict() {
+        for (trusted in listOf(false, true)) {
+            val verdicts = listOf(null, ClientReport(), ClientReport(false), ClientReport(true))
+                .map { verdictForHardware(trusted, 2, it) }
+            assertTrue(verdicts.all { it.attestationTrusted == trusted })
+            assertTrue(verdicts.all {
+                it.reasons == if (trusted) emptyList() else listOf("attestation rejected")
+            })
+        }
+    }
+
+    @Test
+    fun malformedUntrustedChainCannotBeMadeTrustedByClientClaims() {
+        val certificate = GoogleTrustAnchors().first().trustedCert.encoded
+        val verifier = AttestationVerifier(policy, { true }, { emptySet() })
+        for (report in listOf(null, ClientReport(), ClientReport(false), ClientReport(true))) {
+            val verdict = verifier.verify(ByteArray(32), List(2) { certificate }, report)
+            assertFalse(verdict.attestationTrusted)
+            assertEquals(listOf("attestation rejected"), verdict.reasons)
+        }
+    }
+
+    @Test
+    fun reportedSignalsAreEchoedAndCannotChangeTheVerdict() {
+        val certificate = GoogleTrustAnchors().first().trustedCert.encoded
+        val verifier = AttestationVerifier(policy, { true }, { emptySet() })
+        val report = ClientReport(
+            isRooted = false,
+            signals = listOf(
+                "FRIDA_LIBRARY_MAPPED",
+                "FRIDA_LIBRARY_MAPPED",
+                "not a signal",
+                "../etc",
+                "A".repeat(65),
+            ),
+        )
+
+        val verdict = verifier.verify(ByteArray(32), List(2) { certificate }, report)
+
+        assertFalse(verdict.attestationTrusted)
+        assertEquals(listOf("attestation rejected"), verdict.reasons)
+        assertEquals(listOf("FRIDA_LIBRARY_MAPPED"), verdict.reportedSignals)
+    }
+
+    @Test
+    fun nullSignalNamesAreDiscardedAfterChallengeConsumption() {
+        val certificate = GoogleTrustAnchors().first().trustedCert.encoded
+        var consumed = false
+        val verifier = AttestationVerifier(policy, { consumed = true; true }, { emptySet() })
+        val report = json.fromJson(
+            """{"signals":[null,"FRIDA_LIBRARY_MAPPED"]}""",
+            ClientReport::class.java,
+        )
+
+        val verdict = verifier.verify(ByteArray(32), List(2) { certificate }, report)
+        assertTrue(consumed)
+        assertEquals(listOf("FRIDA_LIBRARY_MAPPED"), verdict.reportedSignals)
     }
 
     @Test

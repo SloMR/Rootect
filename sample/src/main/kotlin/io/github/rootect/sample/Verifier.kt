@@ -21,8 +21,8 @@ internal data class ServerDecision(
  * The pattern worth copying.
  *
  * Everything on the dashboard was decided on a device an attacker may own, so it can be
- * rewritten. The hardware chain is the authoritative gate; the local report rides along as
- * explicitly untrusted runtime evidence the chain cannot see, so a lying client convicts itself.
+ * rewritten. The hardware chain is the authoritative gate. The local report rides along as
+ * untrusted telemetry the example server accepts and does not use.
  */
 internal object Verifier {
 
@@ -75,7 +75,7 @@ internal object Verifier {
     private fun unavailable(title: String, detail: String) =
         ServerDecision(AttestationState.UNAVAILABLE, title, detail)
 
-    /** The hardware chain plus the untrusted local report, so the server can compare the two. */
+    /** The hardware chain plus untrusted local telemetry returned but not judged by the server. */
     private fun requestBody(
         challenge: String,
         chain: List<ByteArray>,
