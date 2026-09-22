@@ -41,6 +41,7 @@ extra=(
   "/data/adb" "/sbin/su" "/system/bin/su" "/system/xbin/su"
   frida frida-gum frida-agent lsposed xposed riru
   "/proc/self" "/proc/1/" "/system/"
+  "APK Sig " "Block 42"
 )
 
 mapfile -t needles < <(printf '%s\n' "${derived[@]}" "${extra[@]}" | sort -u)

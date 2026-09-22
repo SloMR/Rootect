@@ -7,9 +7,20 @@
 
 // Runs every native check. The tag catches malformed or naive replacements; it is not a MAC.
 extern "C" JNIEXPORT jintArray JNICALL
-Java_io_github_rootect_internal_jni_NativeBridge_scan(JNIEnv* env, jobject, jint nonce) {
+Java_io_github_rootect_internal_jni_NativeBridge_scan(
+        JNIEnv* env, jobject, jint nonce, jstring japk, jstring jexpected, jint sdk) {
     auto outcome = rootect::scan_all();
-
+    if (jexpected != nullptr) {
+        const char* apk = japk == nullptr ? nullptr : env->GetStringUTFChars(japk, nullptr);
+        const char* expected = env->GetStringUTFChars(jexpected, nullptr);
+        if (apk != nullptr && expected != nullptr) {
+            int signing = rootect::signing_matches(apk, expected, sdk);
+            if (signing == 0) outcome.facts |= rootect::NF_SIGNING_MATCH;
+            if (signing == 1) outcome.facts |= rootect::NF_SIGNING_MISMATCH;
+        }
+        if (apk != nullptr) env->ReleaseStringUTFChars(japk, apk);
+        if (expected != nullptr) env->ReleaseStringUTFChars(jexpected, expected);
+    }
     jint out[4] = {
         static_cast<jint>(outcome.flags),
         static_cast<jint>(outcome.inconclusive),

@@ -27,6 +27,8 @@ internal object NativeSignals {
 
     val count: Int get() = bits.size
     const val FACT_BOOT_STATE_READ: Int = 1 shl 0
+    const val FACT_SIGNING_MATCH: Int = 1 shl 1
+    const val FACT_SIGNING_MISMATCH: Int = 1 shl 2
 
     /** Result checksum. It catches simple stubs, not a targeted hook. */
     fun tagOf(flags: Int, inconclusive: Int, facts: Int, nonce: Int): Int {

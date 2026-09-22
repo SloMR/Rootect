@@ -72,7 +72,9 @@ class RootDetectionTest {
         assertEquals(
             "scan set a fact bit with nothing behind it",
             0,
-            scan[2] and NativeSignals.FACT_BOOT_STATE_READ.inv(),
+            scan[2] and (NativeSignals.FACT_BOOT_STATE_READ or
+                NativeSignals.FACT_SIGNING_MATCH or
+                NativeSignals.FACT_SIGNING_MISMATCH).inv(),
         )
     }
 

@@ -1,6 +1,7 @@
 package io.github.rootect
 
 import android.content.Context
+import android.os.Build
 import io.github.rootect.internal.attest.HardwareAttestation
 import io.github.rootect.internal.detect.IntegrityDetector
 import io.github.rootect.internal.detect.PackageDetector
@@ -25,6 +26,7 @@ public object Rootect {
         val signals = mutableListOf<Signal>()
         var inconclusive = 0
         var bootStateRead = false
+        var nativeSigning: Int? = null
 
         // Each detector is isolated: a detection library must not crash its host app.
         // A wrong answer is evidence; a library that never loaded is a packaging problem.
@@ -33,7 +35,12 @@ public object Rootect {
         } else {
             try {
                 val nonce = Random.nextInt()
-                val scan = NativeBridge.scan(nonce)
+                val scan = NativeBridge.scan(
+                    nonce,
+                    runCatching { context.applicationInfo.sourceDir }.getOrNull(),
+                    config.expectedSigningSha256,
+                    Build.VERSION.SDK_INT,
+                )
                 if (scan.size != 4 ||
                     scan[3] != NativeSignals.tagOf(scan[0], scan[1], scan[2], nonce)
                 ) {
@@ -42,6 +49,11 @@ public object Rootect {
                     signals += NativeSignals.decode(scan[0])
                     inconclusive += scan[1]
                     bootStateRead = scan[2] and NativeSignals.FACT_BOOT_STATE_READ != 0
+                    nativeSigning = when {
+                        scan[2] and NativeSignals.FACT_SIGNING_MATCH != 0 -> 0
+                        scan[2] and NativeSignals.FACT_SIGNING_MISMATCH != 0 -> 1
+                        else -> null
+                    }
                 }
             } catch (_: Throwable) {
                 signals += Signal(SignalId.DETECTOR_TAMPERED)
@@ -67,7 +79,9 @@ public object Rootect {
         }
 
         try {
-            signals += IntegrityDetector.detect(context, config)
+            val integrity = IntegrityDetector.detect(context, config, nativeSigning)
+            signals += integrity.signals
+            inconclusive += integrity.inconclusive
         } catch (_: Throwable) {
             inconclusive++
         }

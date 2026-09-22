@@ -1,10 +1,17 @@
 package io.github.rootect
 
 import android.util.Log
+import android.content.ContextWrapper
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.rootect.signal.SignalId
+import io.github.rootect.internal.detect.IntegrityDetector
+import io.github.rootect.internal.jni.NativeBridge
+import io.github.rootect.internal.jni.NativeSignals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -63,6 +70,60 @@ class IntegrityTest {
     }
 
     @Test
+    fun nativeSigningDistinguishesMatchMismatchAndUnreadable() {
+        val actual = currentSigningSha256()
+        assumeTrue("could not read our own signature", actual != null)
+        val apk = context.applicationInfo.sourceDir
+        val sdk = Build.VERSION.SDK_INT
+        val match = NativeBridge.scan(1, apk, actual, sdk)
+        assertTrue(match[2] and NativeSignals.FACT_SIGNING_MATCH != 0)
+
+        val wrong = "00".repeat(32)
+        assumeTrue("test certificate unexpectedly has the all-zero digest", actual != wrong)
+        val mismatch = NativeBridge.scan(2, apk, wrong, sdk)
+        assertTrue(mismatch[2] and NativeSignals.FACT_SIGNING_MISMATCH != 0)
+
+        val unreadable = NativeBridge.scan(3, "$apk.missing", actual, sdk)
+        assertEquals(0, unreadable[2] and
+            (NativeSignals.FACT_SIGNING_MATCH or NativeSignals.FACT_SIGNING_MISMATCH))
+    }
+
+    @Test
+    fun rotatedApkUsesItsCurrentSignerWhenFixtureIsProvided() {
+        // Supply an installed rotated APK and its two cert hashes through instrumentation
+        // arguments. No test keys or device-specific APK path belong in the repository.
+        val arguments = InstrumentationRegistry.getArguments()
+        val apk = arguments.getString("rootectRotationApk")
+        val current = arguments.getString("rootectRotationCurrent")
+        val previous = arguments.getString("rootectRotationPrevious")
+        assumeTrue("requires a rotated APK fixture", apk != null && current != null && previous != null)
+
+        val match = NativeBridge.scan(4, apk!!, current!!, Build.VERSION.SDK_INT)
+        assertTrue("the current signer must match", match[2] and NativeSignals.FACT_SIGNING_MATCH != 0)
+        assertEquals(NativeSignals.tagOf(match[0], match[1], match[2], 4), match[3])
+
+        val oldSigner = NativeBridge.scan(5, apk, previous!!, Build.VERSION.SDK_INT)
+        assertTrue("the pre-rotation signer must not match",
+            oldSigner[2] and NativeSignals.FACT_SIGNING_MISMATCH != 0)
+    }
+
+    @Test
+    fun anUnreadablePackageManagerDoesNotHideANativeMismatch() {
+        // Making PackageManager throw must not turn a native mismatch into "unknown".
+        val noPackageManager = object : ContextWrapper(context) {
+            override fun getPackageManager(): PackageManager = throw SecurityException("hidden")
+        }
+        val config = RootectConfig(expectedSigningSha256 = "00".repeat(32))
+
+        val hidden = IntegrityDetector.detect(noPackageManager, config, nativeSigning = 1)
+        assertTrue(hidden.signals.any { it.id == SignalId.SIGNATURE_MISMATCH })
+
+        val unknown = IntegrityDetector.detect(noPackageManager, config, nativeSigning = null)
+        assertFalse(unknown.signals.any { it.id == SignalId.SIGNATURE_MISMATCH })
+        assertEquals(1, unknown.inconclusive)
+    }
+
+    @Test
     fun emulatorIsDetectedOnlyOnAnEmulator() {
         val report = Rootect.analyze(context)
         val isEmulatorSignal = report.signals.any { it.id == SignalId.EMULATOR_FINGERPRINT }
@@ -100,11 +161,14 @@ class IntegrityTest {
 
     private fun currentSigningSha256(): String? = try {
         val pm = context.packageManager
-        @Suppress("DEPRECATION")
-        val sigs = pm.getPackageInfo(
-            context.packageName,
-            android.content.pm.PackageManager.GET_SIGNATURES,
-        ).signatures
+        val sigs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            pm.getPackageInfo(context.packageName,
+                android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES).signingInfo?.apkContentsSigners
+        } else {
+            @Suppress("DEPRECATION")
+            pm.getPackageInfo(context.packageName,
+                android.content.pm.PackageManager.GET_SIGNATURES).signatures
+        }
         sigs?.firstOrNull()?.let { cert ->
             java.security.MessageDigest.getInstance("SHA-256")
                 .digest(cert.toByteArray())

@@ -12,9 +12,12 @@ import java.security.MessageDigest
 // Checks about the app itself rather than the device it runs on.
 internal object IntegrityDetector {
 
+    internal data class Result(val signals: List<Signal>, val inconclusive: Int)
+
     /** Emits signature, debuggable and installer signals. */
-    fun detect(context: Context, config: RootectConfig): List<Signal> {
+    fun detect(context: Context, config: RootectConfig, nativeSigning: Int?): Result {
         val signals = mutableListOf<Signal>()
+        var inconclusive = 0
 
         if (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
             signals += Signal(SignalId.DEBUGGABLE_BUILD)
@@ -27,15 +30,21 @@ internal object IntegrityDetector {
             signals += Signal(SignalId.UNTRUSTED_INSTALLER)
         }
 
-        // Only checkable when the host app tells us what to expect. A mismatch means the
-        // APK was resigned, which means it was repackaged. Failing to read our own
-        // signature counts as a mismatch: it should never happen on an intact install.
+        // The native APK read is another in-process check, not an independent trust anchor.
+        // An unreadable signature is unknown, never proof of repackaging.
         val expected = config.expectedSigningSha256?.let(::normalise)
-        if (expected != null && signingSha256(context) != expected) {
-            signals += Signal(SignalId.SIGNATURE_MISMATCH)
+        if (expected != null) {
+            val installedSigner = signingSha256(context)
+            when {
+                // A definite mismatch from either channel beats the other being unknown.
+                installedSigner != null && installedSigner != expected ->
+                    signals += Signal(SignalId.SIGNATURE_MISMATCH)
+                nativeSigning == 1 -> signals += Signal(SignalId.SIGNATURE_MISMATCH)
+                installedSigner == null || nativeSigning == null -> inconclusive++
+            }
         }
 
-        return signals
+        return Result(signals, inconclusive)
     }
 
     /** Package that installed us, or null for a sideload. */

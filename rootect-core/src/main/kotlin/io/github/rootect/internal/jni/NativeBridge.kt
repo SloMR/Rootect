@@ -13,5 +13,10 @@ internal object NativeBridge {
     }
 
     /** Runs every native check. Returns [flags, inconclusive, facts, tag]. */
-    external fun scan(nonce: Int): IntArray
+    external fun scan(
+        nonce: Int,
+        apkPath: String? = null,
+        expectedHex: String? = null,
+        sdk: Int = 0,
+    ): IntArray
 }

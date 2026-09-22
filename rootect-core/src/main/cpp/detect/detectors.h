@@ -28,6 +28,8 @@ constexpr unsigned kNativeSignalCount = 14;
 // Not evidence.
 enum NativeFact : unsigned {
     NF_BOOT_STATE_READ = 1u << 0,
+    NF_SIGNING_MATCH = 1u << 1,
+    NF_SIGNING_MISMATCH = 1u << 2,
 };
 
 struct ScanOutcome {
@@ -49,6 +51,9 @@ void scan_emulator(ScanOutcome& out);
 // Debug-only probe: instrumentation flags scan_maps would set for a mapped file path.
 unsigned maps_probe(const char* path);
 #endif
+
+// 0 match, 1 mismatch, -1 unreadable.
+int signing_matches(const char* apk_path, const char* expected_hex, int sdk);
 
 // Mixes a scan result with a caller-supplied nonce. Kotlin re-derives this and treats a
 // mismatch as evidence, so replacing the JNI entry point is no longer free.

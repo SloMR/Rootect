@@ -97,6 +97,22 @@ static inline int rt_close(int fd) {
     return static_cast<int>(rt_syscall(__NR_close, fd, 0, 0, 0, 0, 0));
 }
 
+// File offset. whence is SEEK_SET / SEEK_CUR / SEEK_END. Returns the offset, or -errno.
+// On 32-bit ARM, _llseek writes the 64-bit result through a pointer; the high/low halves
+// of the input offset go in r1/r2, so no padding register is required.
+static inline long long rt_lseek(int fd, long long offset, int whence) {
+#if defined(__arm__)
+    long long result = 0;
+    long n = rt_syscall(__NR__llseek, fd,
+                        static_cast<long>((offset >> 32) & 0xFFFFFFFFLL),
+                        static_cast<long>(offset & 0xFFFFFFFFLL),
+                        reinterpret_cast<long>(&result), whence, 0);
+    return n < 0 ? n : result;
+#else
+    return rt_syscall(__NR_lseek, fd, static_cast<long>(offset), whence, 0, 0, 0);
+#endif
+}
+
 // Tests access to a path. mode is F_OK / R_OK / X_OK; 0 means allowed.
 static inline int rt_faccessat(const char* path, int mode) {
     return static_cast<int>(rt_syscall(__NR_faccessat, AT_FDCWD,

@@ -18,6 +18,7 @@ add_library(rootect SHARED
         detect/detect_root.cpp
         detect/detect_hooks.cpp
         detect/detect_emulator.cpp
+        detect/detect_signing.cpp
 )
 
 # So "core/..." and "detect/..." resolve the same from every source file.
