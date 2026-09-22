@@ -59,9 +59,10 @@ Rootect.analyze(context, config): RootectReport
 Rootect.isRooted(context): Boolean
 ```
 
-`analyze` runs every enabled detector and returns the evidence. **It never throws.** Each
-detector is isolated: if one fails, that is counted as an inconclusive check rather than
-propagated, because a security library must not be the reason an app crashes.
+`analyze` runs every enabled detector and returns the evidence. Detector failures are caught,
+but this cannot guarantee protection against every exception or native crash. Missing native
+code is inconclusive; a failure after loading emits `DETECTOR_TAMPERED`. Some inner errors
+are suppressed, so zero inconclusive checks does not mean every probe completed.
 
 `isRooted(context)` is a convenience wrapper. Read the warning under
 [Rollups](#rollups-and-their-trap) before using it.
@@ -120,11 +121,12 @@ Rootect.analyze(
 ### `expectedSigningSha256`
 
 SHA-256 of your release signing certificate, hex, colons optional. Without it,
-`SIGNATURE_MISMATCH` can never fire and repackaging is undetectable.
+`SIGNATURE_MISMATCH` can never fire and this signing-certificate check is disabled.
 
 The sample accepts it as `-Prootect.sampleSigningSha256=<64-hex>`.
 
-**Generate it at build time.** A pasted constant becomes wrong the day you rotate keys, and
+**Generate it at build time.** The `signingCertSha256()` helper below is pseudocode for your
+build’s certificate lookup, not a function supplied by Rootect. A pasted constant becomes wrong the day you rotate keys, and
 then every honest install reports itself repackaged with `CONCLUSIVE` confidence:
 
 ```kotlin
@@ -137,13 +139,15 @@ android {
 }
 ```
 
-The check compares against `apkContentsSigners` — who signed *this* APK — not the signing
-history, so key rotation via `signingCertificateHistory` is not handled. If you rotate, ship
-the new hash in the same release.
+`PackageManager` reads the first current signer in `apkContentsSigners`. Native code reads
+the APK Signing Block and hashes the certificate of the signer the platform would pick for
+this Android version (v3.1, then v3, then v2). Either one disagreeing with your hash raises
+`SIGNATURE_MISMATCH`; a channel that cannot be read counts as inconclusive, not as a
+mismatch. One expected hash cannot accept several delivery certificates.
 
 ### `trustedInstallers`
 
-Defaults to Google Play (`com.android.vending`) and its legacy feedback package. Anything
+Defaults to `com.android.vending` and `com.google.android.feedback`. Anything
 else emits `UNTRUSTED_INSTALLER` at `WEAK` confidence.
 
 **Override this if you distribute outside Play.** Enterprise, direct download and regional
@@ -161,13 +165,13 @@ And its result is still computed locally: for a verdict you can trust, do the ro
 
 ## Calling it
 
-**Where.** Anywhere with a `Context`. Application `onCreate` is fine for a first scan.
+**Where.** Anywhere with a `Context`. Run the synchronous scan on a worker thread.
 
-**Cost.** The native scan reads a handful of `/proc` files and probes some paths — cheap
-enough to call on a screen transition. Attestation is not; budget for a key generation.
+**Cost.** Scans perform file and Android API I/O, including mapped-code reads. Measure latency
+on your target devices; attestation adds key generation.
 
-**Threading.** `analyze` is synchronous and does file I/O. Keep it off the main thread if you
-call it with `hardwareAttestation = true`, or in a tight loop.
+**Threading.** `analyze` is synchronous and does file I/O. Keep it off the main thread,
+including scans without attestation.
 
 **How often.** Conditions change while an app runs — a debugger attaches, a framework loads.
 One scan at startup tells you about startup. Re-scan at the moments that matter to you.
@@ -189,7 +193,7 @@ you can stop after the ones you need — `new RootectConfig("AB:CD:…")` is val
 
 ## Responding to evidence
 
-- **Branch on `risk` or `score`, not on `isRooted`.** See below.
+- **Choose total or category scores according to your policy.** Neither proves compromise.
 - **Prefer degrading to blocking.** A false positive that blocks a paying customer usually
   costs more than a true positive you only logged. Rooted users are not automatically
   attackers.
@@ -212,7 +216,7 @@ Nothing is broken. The hiding tool removed the root-specific evidence, so the `R
 scored below threshold — while an unlocked bootloader and permissive SELinux still fired,
 which is why overall risk is `CRITICAL`.
 
-**`isRooted` is for telemetry. `risk` and `score` are for decisions.**
+**A high total can reflect legitimate posture; a low total can still miss hidden root.**
 
 ## Common mistakes
 
@@ -232,8 +236,8 @@ which is why overall risk is `CRITICAL`.
 ```
 
 The sample is a live dashboard of every signal and a server-gated attestation example. Local
-findings remain diagnostic; protected access stays denied until the verifier accepts a fresh
-hardware chain. It also remembers root detection and real server rejection as two encrypted,
+findings remain diagnostic; the access indicator stays denied until a fresh chain is accepted.
+The backend example has no protected operation or token; real access must be enforced there. It also remembers root detection and real server rejection as two encrypted,
 installation-local flags. This survives an ordinary restart, but root, reinstall, deletion, or
 rollback can defeat it; keep the authoritative history on your backend. See
 [attestation.md](attestation.md) before copying that flow.
