@@ -21,6 +21,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertFails
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class AttestationServerTest {
@@ -52,6 +53,22 @@ class AttestationServerTest {
     }
 
     @Test
+    fun revocationOutageDoesNotConsumeTheChallenge() {
+        var consumed = false
+        val certificate = GoogleTrustAnchors().first().trustedCert.encoded
+        val verifier = AttestationVerifier(
+            policy,
+            { consumed = true; true },
+            { throw RevocationUnavailableException(IllegalStateException("offline")) },
+        )
+
+        assertFailsWith<RevocationUnavailableException> {
+            verifier.verify(ByteArray(32), List(2) { certificate }, null)
+        }
+        assertFalse(consumed)
+    }
+
+    @Test
     fun challengeIsConsumedOnce() {
         val unused = AtomicBoolean(true)
         val certificate = GoogleTrustAnchors().first().trustedCert.encoded
@@ -76,9 +93,11 @@ class AttestationServerTest {
     fun revocationsAreCachedUntilExpiry() {
         var now = Instant.EPOCH
         var loads = 0
-        val source = CachedRevocations({ setOf((++loads).toString()) }, Duration.ofSeconds(1)) {
-            now
-        }
+        val source = CachedRevocations(
+            { setOf((++loads).toString()) },
+            refreshAfter = Duration.ofSeconds(1),
+            now = { now },
+        )
 
         assertEquals(setOf("1"), source.get())
         assertEquals(setOf("1"), source.get())
@@ -111,19 +130,40 @@ class AttestationServerTest {
         assertFails { parseRevocationFeed("""{"entries":{"aa":{}}}""") } // entry without status
     }
 
+    private fun outageSource(now: () -> Instant, offline: () -> Boolean) = CachedRevocations(
+        { if (offline()) throw IllegalStateException("offline") else setOf("aa") },
+        refreshAfter = Duration.ofSeconds(1),
+        maxStale = Duration.ofSeconds(10),
+        retryAfter = Duration.ofSeconds(2),
+        now = now,
+    )
+
     @Test
-    fun cachedRevocationsNeverReturnsStaleAfterFailedRefresh() {
+    fun cachedRevocationsServeLastKnownGoodThroughAShortOutage() {
         var now = Instant.EPOCH
         var offline = false
-        val source = CachedRevocations(
-            { if (offline) throw IllegalStateException("offline") else setOf("aa") },
-            Duration.ofSeconds(1),
-            { now },
-        )
+        val source = outageSource({ now }, { offline })
         assertEquals(setOf("aa"), source.get())
-        now = now.plusSeconds(2)
+        now = now.plusSeconds(2) // past refreshAfter
         offline = true
-        assertFails { source.get() } // fails closed rather than serving the stale cached set
+        assertEquals(setOf("aa"), source.get()) // serves last-known-good, not 503
+    }
+
+    @Test
+    fun cachedRevocationsFailClosedOnceTooStale() {
+        var now = Instant.EPOCH
+        var offline = false
+        val source = outageSource({ now }, { offline })
+        assertEquals(setOf("aa"), source.get())
+        now = now.plusSeconds(11) // past maxStale
+        offline = true
+        assertFails { source.get() } // too old to trust → fails closed
+    }
+
+    @Test
+    fun cachedRevocationsFailClosedWithNoListYet() {
+        // Cold start with Google already down: no last-known-good to fall back on.
+        assertFails { CachedRevocations({ throw IllegalStateException("offline") }).get() }
     }
 
     @Test
@@ -132,6 +172,19 @@ class AttestationServerTest {
         assertFalse(contradicts(ClientReport(isRooted = true), hardwareCompromised = true))
         assertFalse(contradicts(ClientReport(isRooted = false), hardwareCompromised = false))
         assertFalse(contradicts(null, hardwareCompromised = true))
+    }
+
+    @Test
+    fun customRevocationSupplierFailureRemainsServiceUnavailable() {
+        val certificate = GoogleTrustAnchors().first().trustedCert.encoded
+        var consumed = false
+        val verifier = AttestationVerifier(policy, { consumed = true; true },
+            { throw IllegalStateException("offline") })
+
+        assertFailsWith<RevocationUnavailableException> {
+            verifier.verify(ByteArray(32), List(2) { certificate }, null)
+        }
+        assertFalse(consumed)
     }
 
     @Test

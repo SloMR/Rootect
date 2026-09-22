@@ -127,12 +127,14 @@ fun interface EvidenceVerifier {
 class AttestationVerifier(
     policy: AttestationPolicy,
     private val consumeChallenge: (ByteArray) -> Boolean,
-    revokedSerials: () -> Set<String> = googleRevocations::get,
+    private val revokedSerials: () -> Set<String> = googleRevocations::get,
     now: InstantSource = InstantSource { Instant.now() },
 ) : EvidenceVerifier {
     private val verifier = Verifier(
+        // Trusted root certificates bundled in the Google verifier at build time.
+        // Updating these pins requires rebuilding and redeploying the server.
         GoogleTrustAnchors,
-        revokedSerials,
+        { checkedRevocations() },
         now,
         constraintConfig {
             additionalConstraint {
@@ -153,6 +155,8 @@ class AttestationVerifier(
         val nonce = challenge.copyOf()
         val chain = runCatching { parseChain(chainDer) }
             .getOrElse { return rejected("invalid input", count) }
+        // Load before consuming. A brief outage can be retried while the challenge is fresh.
+        checkedRevocations()
         if (!runCatching { consumeChallenge(nonce.copyOf()) }.getOrDefault(false)) {
             return rejected("challenge rejected", count)
         }
@@ -176,6 +180,14 @@ class AttestationVerifier(
         return AttestationVerdict(false, reasons, count)
     }
 
+    private fun checkedRevocations(): Set<String> = try {
+        revokedSerials()
+    } catch (failure: RevocationUnavailableException) {
+        throw failure
+    } catch (failure: Exception) {
+        throw RevocationUnavailableException(failure)
+    }
+
     private fun parseChain(chainDer: List<ByteArray>): List<X509Certificate> {
         require(chainDer.size in 2..8)
         val factory = CertificateFactory.getInstance("X.509")
@@ -190,30 +202,71 @@ class AttestationVerifier(
 
 }
 
+// Serves Google's revocation list from cache, refreshing after `refreshAfter`. A refresh that
+// fails (Google unreachable) keeps serving the last good list until it ages past `maxStale`, so
+// a transient Google outage does not start declining every client — only a list too old to trust
+// does, and then it fails closed. `retryAfter` throttles retries during an outage so a request
+// does not pay the fetch timeout every time. Production should refresh this out of band and from a
+// shared store, so no request ever waits on the network.
 internal class CachedRevocations(
     private val load: () -> Set<String>,
-    private val ttl: Duration = Duration.ofHours(1),
+    private val refreshAfter: Duration = Duration.ofHours(1),
+    private val maxStale: Duration = Duration.ofHours(24),
+    private val retryAfter: Duration = Duration.ofSeconds(15),
     private val now: () -> Instant = { Instant.now() },
 ) {
-    private var value = emptySet<String>()
-    private var expires = Instant.EPOCH
+    private var value: Set<String>? = null
+    private var loadedAt = Instant.EPOCH
+    private var retryAt = Instant.EPOCH
+    private var lastFailure: Exception? = null
+    private var loading = false
 
     init {
-        require(!ttl.isZero && !ttl.isNegative)
+        require(!refreshAfter.isZero && !refreshAfter.isNegative)
+        require(maxStale >= refreshAfter)
+        require(!retryAfter.isNegative)
     }
 
-    @Synchronized
     fun get(): Set<String> {
-        val timestamp = now()
-        if (timestamp.isBefore(expires)) return value
-        val loaded = try {
-            load().toSet()
-        } catch (failure: Exception) {
-            throw RevocationUnavailableException(failure)
+        synchronized(this) {
+            val timestamp = now()
+            val cached = value
+            val usable = cached != null && timestamp.isBefore(loadedAt.plus(maxStale))
+            if (usable && timestamp.isBefore(loadedAt.plus(refreshAfter))) return cached!!
+            if (loading) {
+                if (usable) return cached!!
+                throw RevocationUnavailableException(
+                    lastFailure ?: IOException("revocation refresh in progress"),
+                )
+            }
+            val previousFailure = lastFailure
+            if (previousFailure != null && timestamp.isBefore(retryAt)) {
+                if (usable) return cached!!
+                throw RevocationUnavailableException(previousFailure)
+            }
+            loading = true
         }
-        value = loaded
-        expires = timestamp.plus(ttl)
-        return loaded
+        try {
+            val loaded = load().toSet()
+            synchronized(this) {
+                loadedAt = now()
+                value = loaded
+                retryAt = Instant.EPOCH
+                lastFailure = null
+            }
+            return loaded
+        } catch (failure: Exception) {
+            synchronized(this) {
+                val failedAt = now()
+                retryAt = failedAt.plus(retryAfter)
+                lastFailure = failure
+                val cached = value
+                if (cached != null && failedAt.isBefore(loadedAt.plus(maxStale))) return cached
+            }
+            throw RevocationUnavailableException(failure)
+        } finally {
+            synchronized(this) { loading = false }
+        }
     }
 }
 
