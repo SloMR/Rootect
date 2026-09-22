@@ -55,10 +55,10 @@ colours the score without ever carrying it. It fires on any device with the togg
 negative control is that it goes silent the moment the setting reads off, verified on the
 rooted test phone by toggling the flag both ways with `rootScore` and `isRooted` unchanged
 either way. The clean Android 37 x86_64 emulator also passed with the setting off and on:
-no root or hook evidence in either state, and no developer-options signal when off. Denied
-or missing settings reads count as inconclusive rather than as a confirmed off state. The
-regression checks a denied read against a baseline that answered, and requires an absent
-setting to leave the baseline inconclusive.
+no root or hook evidence in either state, and no developer-options signal when off. A
+setting that was never written reads as off, as Android's own reader treats it; only a
+denied read counts as inconclusive. One regression deletes the setting on a lab device and
+restores it; the other fakes a denied read against a baseline that answered.
 
 `SELINUX_PERMISSIVE` requires a readable enforcement-file line beginning with `0`.
 A successful read of `1` does not fire. A denied read is not proof of enforcing mode; the
