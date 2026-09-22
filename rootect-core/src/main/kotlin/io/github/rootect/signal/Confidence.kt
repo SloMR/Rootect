@@ -11,6 +11,6 @@ public enum class Confidence(internal val weight: Int) {
     /** Hard to explain away, e.g. an `su` binary. */
     STRONG(50),
 
-    /** No innocent explanation, e.g. the kernel answering a root syscall. */
+    /** Maximum heuristic weight, not proof. A wrong expected signing hash scores 100 too. */
     CONCLUSIVE(100),
 }
