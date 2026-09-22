@@ -11,30 +11,43 @@ Every signal has a fixed heuristic weight. It is not a measured probability.
 | `WEAK` | 10 | Common on honest devices |
 | `MODERATE` | 25 | Unusual but explainable |
 | `STRONG` | 50 | Hard to explain away |
-| `CONCLUSIVE` | 100 | No innocent explanation |
+| `CONCLUSIVE` | 100 | Maximum heuristic weight; not proof of compromise |
 
-## Combining them
+## Combining them: noisy-OR
 
-Signals combine with **noisy-OR**, not addition:
+**Why not just add the weights up?** Because adding turns a handful of small, innocent signals
+into a false alarm, and a false alarm gets the library deleted. The formula combines heuristic weights; it does not estimate an actual probability
+of compromise. Evidence still accumulates, but with
+**diminishing returns**, so weak signals never stack up linearly and one strong signal is never
+diluted.
 
 ```
 score = (1 − Π(1 − weightᵢ/100)) × 100
 ```
 
-The formula rewards multiple distinct signals without simple addition. Correlated signals
-mean the result must not be read as a statistical probability.
+**A real scan.** An unrooted test phone (`isRooted = false`, root score 0) fired four signals —
+a historically tripped Knox fuse, a debug build, developer options on, and a sideloaded
+installer:
 
-Adding instead would let five `WEAK` signals outweigh one `CONCLUSIVE` one, and five weak
-signals are exactly what an honest custom ROM produces. Noisy-OR also cannot exceed 100, so
-there is no need to clamp it into nonsense.
+| Signal | Confidence | Weight |
+|---|---|---|
+| `KNOX_WARRANTY_BIT_TRIPPED` | STRONG | 50 |
+| `DEBUGGABLE_BUILD` | MODERATE | 25 |
+| `DEVELOPER_OPTIONS_ENABLED` | WEAK | 10 |
+| `UNTRUSTED_INSTALLER` | WEAK | 10 |
 
-Duplicate `SignalId`s count once. Two probes finding `su` in two places is one finding.
+| Method | Score | Band |
+|---|---|---|
+| Add the weights | 50 + 25 + 10 + 10 = **95** | `CRITICAL` |
+| Noisy-OR | (1 − 0.50 × 0.75 × 0.90 × 0.90) × 100 ≈ **70** | `HIGH` |
 
-**Worked example** — one `STRONG` and one `MODERATE`:
+These are score bands, not diagnoses. One `CONCLUSIVE`-weighted signal scores **100**, even
+with a benign cause such as an incorrect expected signing hash.
 
-```
-1 − (1 − 0.50) × (1 − 0.25) = 0.625  →  63
-```
+The implementation rounds to the nearest integer and clamps to 0–100. Because signals can be correlated,
+read the score as a ranking, not a true probability.
+
+Duplicate `SignalId`s count once — two probes finding `su` in two places is one finding.
 
 ## Risk bands
 
@@ -80,9 +93,8 @@ Nothing is broken. DenyList hid the root artefacts, so `ROOT` scored 25 — but 
 still reported an unlocked bootloader and permissive SELinux, which is why overall risk is
 `CRITICAL`.
 
-**Branch on `risk` or `score`. Use `isRooted` for telemetry, not for decisions.** The rollups
-are deliberately conservative, and being conservative about root means saying "no" on a
-device that is quite obviously modified.
+**Choose evidence relevant to your policy.** A high total can reflect legitimate posture;
+a low total can still miss hidden root. Neither total nor category scores prove compromise.
 
 ## Inconclusive checks
 
@@ -91,4 +103,5 @@ report.inconclusiveChecks   // probes that could not complete
 ```
 
 A denied read is not a negative result. If this is non-zero, "no signals" is weaker than it
-looks — treat it as *unknown*, which is a valid third state.
+looks — treat it as *unknown*, which is a valid third state. Some probe errors are not
+counted, so zero does not establish that every check succeeded.
