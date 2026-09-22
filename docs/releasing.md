@@ -18,11 +18,12 @@ the irreversible one comes last and is a deliberate click rather than a side eff
 ### 1. Bump the version
 
 `VERSION_NAME` in `gradle.properties` is the single source for the published coordinates.
-Nothing else needs editing.
+Update version examples and release metadata where appropriate.
 
 ### 2. Build the signed bundle
 
 ```bash
+REPO_ROOT="$PWD"  # Run from the repository root.
 export SIGNING_KEY="$(gpg --armor --export-secret-keys <KEY_ID>)"
 export SIGNING_PASSWORD='<passphrase>'
 ./gradlew publish
@@ -37,9 +38,18 @@ Signing is skipped when the environment variables are absent and the build still
 check rather than assume:
 
 ```bash
+(
 cd rootect-core/build/release-bundle/io/github/rootect/rootect-core/<version>
-for f in *.asc; do gpg --verify "$f" "${f%.asc}"; done
+for suffix in aar pom module sources.jar javadoc.jar; do
+    case "$suffix" in *jar) f="rootect-core-<version>-${suffix}" ;;
+        *) f="rootect-core-<version>.${suffix}" ;; esac
+    test -f "$f" && test -f "$f.asc" && gpg --verify "$f.asc" "$f" || exit 1
+done
+)
 ```
+
+Replace `<version>` in every command with the release version. Use a fresh release build
+directory to avoid stale signatures. The current javadoc jar is an empty placeholder.
 
 Expect five `Good signature` lines: the AAR, the POM, the module metadata, the sources jar and
 the javadoc jar. An unsigned bundle is the most common reason Central rejects an upload.
@@ -50,11 +60,11 @@ Central expects the `io/` tree at the root of the archive, and does not want
 `maven-metadata.xml`:
 
 ```bash
-cd rootect-core/build/release-bundle
+cd "$REPO_ROOT/rootect-core/build/release-bundle"
 python -c "
 import zipfile, os
 with zipfile.ZipFile('../release-bundle.zip', 'w', zipfile.ZIP_DEFLATED) as z:
-    for root, _, files in os.walk('io'):
+    for root, _, files in os.walk('io/github/rootect/rootect-core/<version>'):
         for f in files:
             if 'maven-metadata' not in f:
                 p = os.path.join(root, f)
