@@ -8,14 +8,18 @@ import io.github.rootect.signal.SignalId
 internal object SettingsDetector {
 
     /**
-     * Throws when the setting is absent or unreadable. The caller counts that as
-     * inconclusive; a default of 0 would report a missing setting as off.
+     * A never-written setting reads as off, as Android's own reader treats it. A denied or
+     * failed read throws, and the caller counts that as inconclusive.
      */
     fun detect(context: Context): List<Signal> {
-        val on = Settings.Global.getInt(
-            context.contentResolver,
-            Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
-        ) != 0
+        val on = try {
+            Settings.Global.getInt(
+                context.contentResolver,
+                Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
+            ) != 0
+        } catch (_: Settings.SettingNotFoundException) {
+            false
+        }
         return if (on) listOf(Signal(SignalId.DEVELOPER_OPTIONS_ENABLED)) else emptyList()
     }
 }

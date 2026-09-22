@@ -2,6 +2,8 @@ package io.github.rootect
 
 import android.content.ContentResolver
 import android.content.ContextWrapper
+import android.os.ParcelFileDescriptor
+import android.provider.Settings
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -205,7 +207,7 @@ class RootDetectionTest {
             }
         }
 
-        // A successful 0/1 is a real answer. Absence and a denied read are both inconclusive,
+        // A 0/1 or a never-written setting is a real answer. Only a denied read is inconclusive,
         // so the restricted scan must add a count only when the baseline actually answered.
         val settingsAnswered = runCatching { SettingsDetector.detect(context) }.isSuccess
         val baseline = Rootect.analyze(context)
@@ -216,7 +218,7 @@ class RootDetectionTest {
         assertEquals(baseline.inconclusiveChecks + extraInconclusive, restricted.inconclusiveChecks)
         if (!settingsAnswered) {
             assertTrue(
-                "an absent developer-options setting must be inconclusive",
+                "a denied developer-options read must be inconclusive",
                 baseline.inconclusiveChecks > 0,
             )
         }
@@ -224,6 +226,29 @@ class RootDetectionTest {
         assertEquals(baseline.scoreFor(Category.ROOT), restricted.scoreFor(Category.ROOT))
         assertEquals(baseline.isRooted, restricted.isRooted)
     }
+
+    @Test
+    fun missingDeveloperOptionsSettingReadsAsOff() {
+        assumeTrue(
+            "set rootectDevOptions to run this; it deletes and restores the setting",
+            devOptionsExpectation != null,
+        )
+        val key = Settings.Global.DEVELOPMENT_SETTINGS_ENABLED
+        val original = shell("settings get global $key")
+        try {
+            // Android writes the toggle only once it is used, and treats absence as off.
+            shell("settings delete global $key")
+            assertTrue(SettingsDetector.detect(context).isEmpty())
+        } finally {
+            if (original == "null") shell("settings delete global $key")
+            else shell("settings put global $key $original")
+        }
+    }
+
+    private fun shell(command: String): String =
+        ParcelFileDescriptor.AutoCloseInputStream(
+            InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command),
+        ).use { it.readBytes().decodeToString().trim() }
 
     @Test
     fun uninstrumentedProcessReportsNoHookEvidence() {
