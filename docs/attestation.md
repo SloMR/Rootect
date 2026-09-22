@@ -1,14 +1,25 @@
 # Hardware attestation
 
-Everything else Rootect reports is computed on the device. This is not, and that is the
-entire point.
+Attestation is generated on the device too. The difference is that a backend can verify its
+signed claims independently of the local report.
 
 ## Why it is different
 
-The device's secure element (TEE, or StrongBox on some hardware) holds a private key that
-software cannot read — not the OS, not root, not an instrumentation framework. Ask it to
-generate a key and it hands back a certificate chain stating what kind of device it is
-running on, signed by that key.
+Every other signal is the device describing itself. This one is the device's **secure
+hardware** signing a statement with a normally non-exportable private key. Leaked keys and hardware implementation flaws remain
+possible. Ask it to generate a key and it returns a certificate
+chain describing the device it runs on, signed through an attestation chain.
+
+That hardware is one of two things, and the attestation records which as its `securityLevel`:
+
+- **TEE** — the *Trusted Execution Environment*, an isolated region of the **main processor**
+  (ARM TrustZone). It shares silicon with Android but runs where Android cannot reach. This is
+  what most phones have. It is *not* a separate chip.
+- **StrongBox** — a tamper-resistant secure element or integrated secure enclave, such as Pixel’s Titan M.
+  Stronger, but only on hardware that ships one.
+
+Rootect does not request StrongBox explicitly; having Titan M does not imply its use here.
+The local result uses the lower of the attestation and KeyMint security levels.
 
 An attacker can withhold, replay, relay, or invent a chain. A backend accepts one only after
 validating its path, freshness, app identity, boot state, and Google's revocation list.
@@ -88,7 +99,7 @@ Leaf first, root last. Real output from a test device:
 Chain length varies by vendor and provisioning method. One device produced 4 certificates;
 another produced 5. Accept a bounded list rather than one fixed length, then walk to the end.
 
-Rootect puts the statement in the target leaf. The verifier requires exactly that shape and
+The current verifier supports a statement in the target leaf (not every valid Android chain shape) and
 rejects an attestation extension on any issuer, preventing a signed-child extension attack.
 
 ### Samsung and other vendors
@@ -136,6 +147,9 @@ That emits `ATTESTATION_BOOT_UNVERIFIED`, `ATTESTATION_SOFTWARE_ONLY` and
 `ATTESTATION_CONTRADICTS_PROPERTIES` as ordinary signals. Useful for telemetry — but it is a
 *local* result, so it carries local trust. It is not a substitute for the round trip.
 
+Local parsing checks the nonce and extension shape, not signatures, roots or revocation.
+Missing or unparseable evidence is inconclusive, not `ATTESTATION_SOFTWARE_ONLY`.
+
 It is also slow: it generates a key. Call it on considered checks, not on every screen.
 
 ### On your server
@@ -156,7 +170,7 @@ Reject on the first failure:
 | 10 | Package, version and signer match | Binds evidence to your app |
 
 **There are currently two roots in force.** The older RSA-4096 root, and *Key Attestation
-CA1* (P-384), effective 2026-02-01. Pin both. Recently provisioned devices use the newer one:
+CA1* (P-384), used for signing from February 2026. Pin both. Recently provisioned devices use the newer one:
 the Samsung above chains to it, and pinning only the older root would have rejected a
 currently locked, Verified phone.
 
@@ -168,9 +182,9 @@ https://android.googleapis.com/attestation/status   # revoked keys
 ```
 
 Use Google's maintained Kotlin verifier instead of maintaining another certificate parser.
-Build [android/keyattestation](https://github.com/android/keyattestation) from its current
-upstream source, vendor it or publish it to your internal Maven repository, and rerun the
-attestation tests whenever upstream changes.
+Build [android/keyattestation](https://github.com/android/keyattestation) from reviewed
+upstream source, vendor it or publish it internally, and rerun the attestation tests when
+updating the verifier.
 
 The complete example is one Ktor source file:
 `attestation-server/src/main/kotlin/io/github/rootect/attestation/AttestationServer.kt`.
@@ -189,8 +203,29 @@ not published as a Maven artifact. Pass its directory when building:
 ```
 
 Set `ROOTECT_APP_ID`, `ROOTECT_SIGNING_SHA256` and `ROOTECT_MIN_VERSION` before starting it. The
-default revocation source caches Google's list for one hour, bounds network waits, and returns
-HTTP 503 when verification infrastructure is unavailable.
+default revocation source caches Google's list for an hour, sets connect and read timeouts, keeps serving
+the last good list through a transient Google outage, and returns HTTP 503 only when it has no
+list recent enough to trust.
+
+Google's `keyattestation` library performs the cryptographic verification offline: it uses
+`GoogleTrustAnchors` and a supplied revoked-serial list. The example server still calls Google
+to fetch that list, then caches it for an hour. During an outage, a warm cache can serve its
+last good list for up to 24 hours from the successful fetch. This is an availability tradeoff:
+a key newly added to Google's list can remain accepted while the cached list is stale. A cold
+start without a list, or an expired staleness budget, returns HTTP 503 instead.
+
+Google documents the [revocation feed's caching and revocation policy](https://developer.android.com/privacy-and-security/security-key-attestation#certificate_status).
+The possible delay before Google revokes a leaked key does not make additional staleness
+risk-free. In production, refresh into a shared store from a background job, follow the feed's
+`Cache-Control` header, and choose an explicit staleness budget for the host app's requirements.
+
+### Root updates
+
+The Kotlin server uses the verifier’s bundled `GoogleTrustAnchors`; it does not download
+new trusted roots at runtime. When Google changes its [published roots](https://android.googleapis.com/attestation/root),
+review and update the verifier source, run the server tests, then rebuild and redeploy the
+server. Updating source alone does not update a running server. Revocation-list refresh
+is separate and continues at runtime.
 
 ### Layered evidence: a hardware gate plus an untrusted runtime report
 
@@ -202,16 +237,14 @@ distinct:
   comes only from it.
 - **The local Rootect report is untrusted, complementary evidence.** The chain is blind to
   *runtime* compromise — Frida/Xposed hooking, an attached debugger, a device's historical
-  Knox tamper — so the client sends its `signals` alongside the chain. A hooked client can
-  forge them, so they never grant access; the server echoes them as `clientSignals` for your
-  policy to weigh (block, degrade, log), and they catch honest or commodity compromise the
-  chain cannot see.
+  Knox tamper. The sample posts `isRooted` and a signal-name list beside the chain. A hooked
+  client can forge both. The server returns well-formed names as `reportedSignals` and does
+  not use them, or `isRooted`, to grant access.
 
-Because the report is signed by nothing it cannot be trusted on its own — but it can convict a
-liar. If a client claims clean (`isRooted=false`) while its own chain validated as
-unlocked/unverified, the server returns `contradiction=true`: the client tampered with its own
-detection. Suppressing the local signals then produces that contradiction; sending no
-attestation at all is itself an unknown you must handle, never a clean result.
+An unrooted phone can have an unlocked bootloader. The server therefore does not infer
+report tampering from `isRooted=false` plus unlocked/unverified boot. Its chain rejection
+remains `attestation rejected`, regardless of the client’s root claim. Missing attestation
+remains unknown, never a clean result.
 
 ### Fail closed when the server is unavailable
 
@@ -222,12 +255,11 @@ result cannot survive a server outage.
 
 The sample does this automatically. Its local Rootect dashboard remains available for
 diagnostics, but the separate **Hardware attestation** card starts paused and contacts the backend
-on launch. Only `attestationTrusted=true` changes that card to green and grants access. A verified
-rejection is red and forces the overall security banner to `CRITICAL`, even if a hook forged an empty
-local report. An unreachable server is yellow and says `Server unavailable`: access still fails
-closed, the top status becomes `UNVERIFIED`, and the UI does not falsely accuse the device when no
-verdict was returned.
+on launch. Only `attestationTrusted=true` changes that card to green and grants access. A rejection makes the separate **ATTESTATION** tile `REJECTED`, without changing
+**LOCAL RISK**. A forged empty report can show `SAFE 0` beside rejected attestation. An
+unreachable server shows yellow `UNVERIFIED` / `Server unavailable` and does not grant access.
 
+The example has no protected backend operation or token; its access indicator is a demo.
 That card is still UI inside an attacker-controlled process: Frida can repaint it or replace
 its boolean. In a real app, the backend must enforce the decision by withholding the protected
 data, token, or operation. Never send a protected secret first and ask the app to hide it after
@@ -265,15 +297,20 @@ plus the leaf-first DER chain encoded as Base64 and returns `attestationTrusted`
 
 ## Limits
 
-- **Forged attestation exists.** Tools using leaked hardware keys can produce chains that
-  verify. Revocation checking catches the keys Google knows about, which is most of them; one
-  nobody has reported yet still passes.
+- **Forged attestation is real.** [TrickyStore](https://github.com/beakthoven/TrickyStoreOSS)
+  re-signs the chain with a *leaked factory keybox*, so it validates against a real Google root.
+  A leaked key can also forge claims about other devices; it is not limited to the
+  device from which the key leaked. Revocation (step 4) rejects the leaked keys Google knows about, and
+  [devices launching with Android 16 use RKP](https://developer.android.com/privacy-and-security/security-key-attestation)
+  with no factory keybox to leak — but the pre-RKP installed base keeps its factory keys, so a
+  keybox nobody has reported yet still passes. Revocation, not an OS cutoff, is the defense.
 - **A nonce stops replay, not live relay.** Bind challenges to the account and transaction,
   rate-limit them, and treat clean-device proxying as backend fraud detection.
 - **Not every device can attest.** Older and some low-end hardware returns nothing, or
   software-only attestation. Treat that as *"could not verify"*, never *"clean"*.
 - **The root list changes.** Google added one in February 2026. A hardcoded pin will go stale
-  — refresh it from the published endpoint rather than trusting this document forever.
+  — audit and update the upstream verifier’s bundled roots; this example does not
+  refresh root certificates at runtime.
 - **Attestation says nothing about instrumentation.** It reports bootloader and boot state. A
   locked, verified device can still be running a debugger. Use it together with the local
   signals, not instead of them.

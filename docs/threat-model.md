@@ -12,8 +12,8 @@ any library claiming otherwise is overselling.
 
 So Rootect does two achievable things instead:
 
-1. **Raises cost.** Checks live in native code behind raw syscalls with no readable strings,
-   so defeating them individually means reverse engineering rather than a one-line script.
+1. **Raises cost.** Selected probes use native syscalls and XOR-hidden literals. A hook on
+   the public Kotlin API can still replace the entire report.
 2. **Moves the verdict off the device**, where the attacker's privilege does not reach.
 
 ## Who it actually stops
@@ -22,9 +22,9 @@ Be honest about which attacker you have, because the answer differs enormously.
 
 | | Who | Result |
 |---|---|---|
-| **1** | Ordinary rooted user. Installed a root manager, maybe turned on hiding because an app complained. Does not write tooling. | **Usually detected** |
-| **2** | Commodity fraud at scale — device farms, emulators, off-the-shelf hiding stacks, running unattended. | **Mostly detected**, and the economics hurt them more than any single check |
-| **3** | Someone reverse engineering *your* app specifically. Will read this repository. | **Not detected by anything on the device** |
+| **1** | Ordinary rooted user. Installed a root manager, maybe turned on hiding because an app complained. Does not write tooling. | Visible artefacts may be detected; hiding can defeat them |
+| **2** | Commodity fraud at scale — device farms, emulators, off-the-shelf hiding stacks, running unattended. | No population-wide detection rate has been established |
+| **3** | Someone reverse engineering *your* app specifically. Will read this repository. | Can bypass local results; no guaranteed detection |
 
 Most root-detection benchmarks quietly measure tier 1 and imply tier 3.
 
@@ -55,13 +55,15 @@ an absolute guarantee.
   it, and the two candidate replacements were measured and do not work — see
   [signals.md](signals.md).
 - **`isRooted` can be `false` on a rooted device.** Measured: `CRITICAL`, score 94,
-  `isRooted = false`. Use `risk` and `score` — see [scoring.md](scoring.md).
-- **Forged attestation exists.** Tools using leaked hardware keys can fake it. Revocation
-  checking catches the known ones; a key nobody has reported yet still passes.
+  `isRooted = false`. Neither total nor category scores prove root — see [scoring.md](scoring.md).
+- **Forged attestation exists.** Leaked factory keys can fake a chain; revocation catches
+  known keys. [Devices launching with Android 16 use remote provisioning](https://developer.android.com/privacy-and-security/security-key-attestation)
+  instead of factory attestation keys. An OS upgrade alone does not retire an older device's
+  factory keys, and an unrevoked leaked key can still pass verification.
 - **Live relay exists.** A nonce blocks replay, but a clean device can answer a fresh request
   in real time. Bind challenges to the account and action, then rate-limit and correlate them.
-- **Some devices cannot attest at all.** Treat `ATTESTATION_SOFTWARE_ONLY` as *"could not
-  verify"*, never as *"clean"*.
+- **Some devices cannot attest at all.** Generation failure is inconclusive; a parsed software
+  record emits `ATTESTATION_SOFTWARE_ONLY`. Neither means *"clean"*.
 - **Rooted is not malicious.** Developers, researchers and privacy-minded people root their
   phones. Blocking them is a product decision with a real cost, and it is yours, not the
   library's.

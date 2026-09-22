@@ -11,7 +11,7 @@ your app can weigh, not a verdict it has to accept.
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
 [![API](https://img.shields.io/badge/API-24%2B-brightgreen?style=flat-square)](https://developer.android.com/tools/releases/platforms)
-[![Dependencies](https://img.shields.io/badge/dependencies-stdlib%20only-2E7D32?style=flat-square)](#install)
+[![Dependencies](https://img.shields.io/badge/dependencies-stdlib%20only-2E7D32?style=flat-square)](docs/integration.md#install)
 
 </div>
 
@@ -38,17 +38,17 @@ report.signals   // the evidence
 | **Instrumentation** | Frida, objection, Xposed / LSPosed, and inline hooks in our own code |
 | **App integrity** | Repackaging, resigning, debuggable builds, unexpected installers |
 | **Environment** | Unlocked bootloader, permissive SELinux, emulators, debuggers |
-| **Hardware attestation** | A signed statement from the device's secure element, for your server to verify |
+| **Hardware attestation** | A signed statement from the device's secure hardware, for your server to verify |
 
-Checks live in native code behind raw syscalls with no readable strings, because a check
-written in Kotlin can be switched off in a single line.
+Filesystem and process probes use native code and raw syscalls with selected strings
+XOR-hidden. Android API checks remain in Kotlin; a public API hook can replace the report.
 
 ## What it does not do
 
 Rootect runs inside your app, on a device the attacker may own. **No on-device check survives
 an attacker with enough privilege**, and any library claiming otherwise is overselling. What
-Rootect does is raise the cost of a bypass from trivial to genuinely difficult, and give you
-one signal that does not depend on the device being honest:
+Rootect does is harden individual probes and provide attestation evidence for independent
+server verification:
 
 ```kotlin
 val challenge = api.requestChallenge()              // from your server, used once
@@ -63,7 +63,7 @@ freshness and app identity before using it as evidence.
 ## Honest limits
 
 - Actively hidden root (DenyList + Shamiko) defeats the filesystem signals
-- `isRooted` can read `false` on a rooted device — use `risk` or `score`, and see
+- `isRooted` can read `false` on a rooted device; total scores are not proof of root either. See
   [scoring.md](docs/scoring.md)
 - Attestation can be forged with leaked hardware keys; revocation checking catches the known
   ones
