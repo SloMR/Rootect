@@ -19,7 +19,7 @@ The Android library has no third-party dependencies — the Kotlin standard libr
 else. No permissions. No Google Play requirement. `minSdk 24`.
 
 ```kotlin
-implementation("io.github.rootect:rootect-core:1.0.0")
+implementation("io.github.rootect:rootect-core:1.1.0")
 ```
 
 ```kotlin
