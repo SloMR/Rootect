@@ -34,7 +34,7 @@ report.signals   // the evidence
 
 | | |
 |---|---|
-| **Root** | Magisk, KernelSU, APatch — artefacts, mounts, and kernel-side probes |
+| **Root** | Visible Magisk, KernelSU and APatch artefacts and mounts; a legacy KernelSU kernel probe |
 | **Instrumentation** | Frida, objection, Xposed / LSPosed, and inline hooks in our own code |
 | **App integrity** | Repackaging, resigning, debuggable builds, unexpected installers |
 | **Environment** | Unlocked bootloader, permissive SELinux, emulators, debuggers |
@@ -63,6 +63,8 @@ freshness and app identity before using it as evidence.
 ## Honest limits
 
 - Actively hidden root (DenyList + Shamiko) defeats the filesystem signals
+- Current KernelSU and APatch kernel interfaces are not validated detection paths; see
+  [signals.md](docs/signals.md)
 - `isRooted` can read `false` on a rooted device; total scores are not proof of root either. See
   [scoring.md](docs/scoring.md)
 - Attestation can be forged with leaked hardware keys; revocation checking catches the known

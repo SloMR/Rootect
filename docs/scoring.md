@@ -25,21 +25,22 @@ diluted.
 score = (1 − Π(1 − weightᵢ/100)) × 100
 ```
 
-**A real scan.** An unrooted test phone (`isRooted = false`, root score 0) fired four signals —
-a historically tripped Knox fuse, a debug build, developer options on, and a sideloaded
-installer:
+**A real scan.** An unrooted test phone (`isRooted = false`, root score 0) fired five signals —
+a historically tripped Knox fuse, a debug build, developer options and USB debugging on, and a
+sideloaded installer:
 
 | Signal | Confidence | Weight |
 |---|---|---|
 | `KNOX_WARRANTY_BIT_TRIPPED` | STRONG | 50 |
 | `DEBUGGABLE_BUILD` | MODERATE | 25 |
 | `DEVELOPER_OPTIONS_ENABLED` | WEAK | 10 |
+| `ADB_ENABLED` | WEAK | 10 |
 | `UNTRUSTED_INSTALLER` | WEAK | 10 |
 
 | Method | Score | Band |
 |---|---|---|
-| Add the weights | 50 + 25 + 10 + 10 = **95** | `CRITICAL` |
-| Noisy-OR | (1 − 0.50 × 0.75 × 0.90 × 0.90) × 100 ≈ **70** | `HIGH` |
+| Add the weights | 50 + 25 + 10 + 10 + 10 = **105**, off the 0–100 scale | `CRITICAL` |
+| Noisy-OR | (1 − 0.50 × 0.75 × 0.90 × 0.90 × 0.90) × 100 ≈ **73** | `HIGH` |
 
 These are score bands, not diagnoses. One `CONCLUSIVE`-weighted signal scores **100**, even
 with a benign cause such as an incorrect expected signing hash.

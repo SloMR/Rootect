@@ -19,7 +19,7 @@ added; existing ones are not renamed.
 | `SU_BINARY` | STRONG | `su` on system paths, via raw syscalls | Hiding tools unmount these paths for the target app |
 | `MAGISK_ARTIFACT` | STRONG | Magisk, KernelSU and APatch mount entries and files | **Does not survive Magisk DenyList + Shamiko** |
 | `SYSTEM_PARTITION_WRITABLE` | STRONG | Mounts at or below `/system`, `/vendor`, `/product`, `/system_ext` marked writable | Modern root is systemless and does not remount |
-| `KERNEL_ROOT_SYSCALL` | CONCLUSIVE | A positive version from the legacy KernelSU-style `prctl` probe | No separate APatch supercall or newer KernelSU ioctl probe; Magisk does not implement it |
+| `KERNEL_ROOT_SYSCALL` | CONCLUSIVE | A positive version from the legacy KernelSU-style `prctl` probe | No positive device test yet. Current KernelSU installs a driver FD through a reboot-syscall magic and talks over ioctl. APatch's SuperCall needs a secret key to use, but a public page-residency side channel can detect its handler on kernels up to 6.6; Rootect implements neither. Magisk does not implement this protocol |
 | `ROOT_MANAGER_PACKAGE` | MODERATE | Magisk, KernelSU or APatch manager app installed | Package hiding, renaming, or just uninstalling it |
 
 Hidden root is the honest gap. When root is hidden from an app, the filesystem evidence
@@ -45,6 +45,7 @@ already knows is the cheaper trade.
 | `KNOX_WARRANTY_BIT_TRIPPED` | STRONG | Samsung reports its persistent Knox warranty fuse as tripped | Samsung only; the local property is rewritable, so Knox server attestation is authoritative |
 | `TEST_KEYS_BUILD` | WEAK | `ro.build.tags` containing `test-keys` (not a signature verification) | Common on honest custom ROMs, hence `WEAK` |
 | `DEVELOPER_OPTIONS_ENABLED` | WEAK | The Developer options toggle is on, read from `Settings.Global` | Common on honest devices and one JVM hook from silent; posture only, never feeds `isRooted` |
+| `ADB_ENABLED` | WEAK | USB debugging is enabled in `Settings.Global` | Does not prove a computer is connected or authorized; common on developer devices and hookable in the JVM; never feeds `isRooted` |
 
 These sit in `ENVIRONMENT` and never feed `isRooted`. A permissive, unlocked device is
 evidence about the *device*, not proof of root.
