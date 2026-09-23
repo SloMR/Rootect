@@ -1,6 +1,7 @@
 package io.github.rootect.internal.jni
 
 import io.github.rootect.BuildConfig
+import io.github.rootect.InconclusiveCheck
 import io.github.rootect.signal.Signal
 import io.github.rootect.signal.SignalId
 
@@ -29,6 +30,23 @@ internal object NativeSignals {
     const val FACT_BOOT_STATE_READ: Int = 1 shl 0
     const val FACT_SIGNING_MATCH: Int = 1 shl 1
     const val FACT_SIGNING_MISMATCH: Int = 1 shl 2
+
+    // Mirrors the NF_*_INCONCLUSIVE facts in detectors.h.
+    private val inconclusiveBits: List<Pair<Int, InconclusiveCheck>> = listOf(
+        (1 shl 3) to InconclusiveCheck.MOUNT_SCAN,
+        (1 shl 4) to InconclusiveCheck.ROOT_PATH_SCAN,
+        (1 shl 5) to InconclusiveCheck.SELINUX_SCAN,
+        (1 shl 6) to InconclusiveCheck.PROCESS_MAPS_SCAN,
+        (1 shl 7) to InconclusiveCheck.PROCESS_THREADS_SCAN,
+        (1 shl 8) to InconclusiveCheck.TRACER_SCAN,
+        (1 shl 9) to InconclusiveCheck.CODE_INTEGRITY_SCAN,
+    )
+    val FACT_INCONCLUSIVE_MASK: Int = inconclusiveBits.fold(0) { acc, (bit, _) -> acc or bit }
+
+    /** Check identities share the tagged facts word; the count still records repetitions. */
+    fun inconclusiveSources(facts: Int): Set<InconclusiveCheck> = buildSet {
+        for ((bit, check) in inconclusiveBits) if (facts and bit != 0) add(check)
+    }
 
     /** Result checksum. It catches simple stubs, not a targeted hook. */
     fun tagOf(flags: Int, inconclusive: Int, facts: Int, nonce: Int): Int {

@@ -177,10 +177,16 @@ void scan_kernel(ScanOutcome& out) {
 
 // Runs every root check.
 void scan_root(ScanOutcome& out) {
+    unsigned before = out.inconclusive;
     scan_mounts(out);
+    if (out.inconclusive != before) out.facts |= NF_MOUNT_INCONCLUSIVE;
+    before = out.inconclusive;
     scan_paths(out);
+    if (out.inconclusive != before) out.facts |= NF_PATH_INCONCLUSIVE;
     scan_properties(out);
+    before = out.inconclusive;
     scan_selinux(out);
+    if (out.inconclusive != before) out.facts |= NF_SELINUX_INCONCLUSIVE;
     scan_kernel(out);
 }
 

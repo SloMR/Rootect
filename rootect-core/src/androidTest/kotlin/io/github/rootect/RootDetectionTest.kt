@@ -71,12 +71,17 @@ class RootDetectionTest {
         val valid = (0 until NativeSignals.count).fold(0) { acc, i -> acc or (1 shl i) }
         assertEquals("scan set a bit with no signal behind it", 0, scan[0] and valid.inv())
         assertTrue("inconclusive count must not be negative", scan[1] >= 0)
+        assertTrue(
+            "native failures must identify their check",
+            scan[1] == 0 || NativeSignals.inconclusiveSources(scan[2]).isNotEmpty(),
+        )
         assertEquals(
             "scan set a fact bit with nothing behind it",
             0,
             scan[2] and (NativeSignals.FACT_BOOT_STATE_READ or
                 NativeSignals.FACT_SIGNING_MATCH or
-                NativeSignals.FACT_SIGNING_MISMATCH).inv(),
+                NativeSignals.FACT_SIGNING_MISMATCH or
+                NativeSignals.FACT_INCONCLUSIVE_MASK).inv(),
         )
     }
 
@@ -113,6 +118,10 @@ class RootDetectionTest {
         assertEquals(report.signals.size, report.signals.distinctBy { it.id }.size)
         assertEquals(RiskLevel.forScore(report.score), report.risk)
         assertTrue(report.inconclusiveChecks >= 0)
+        assertTrue(
+            "an incomplete scan must identify a check",
+            report.inconclusiveChecks == 0 || report.inconclusiveSources.isNotEmpty(),
+        )
 
         // A record of what this device actually saw, not an assertion about it.
         Log.i(
@@ -223,6 +232,7 @@ class RootDetectionTest {
             )
         }
         assertTrue(restricted.signals.none { it.id == SignalId.DEVELOPER_OPTIONS_ENABLED })
+        assertTrue(InconclusiveCheck.SETTINGS_READ in restricted.inconclusiveSources)
         assertEquals(baseline.scoreFor(Category.ROOT), restricted.scoreFor(Category.ROOT))
         assertEquals(baseline.isRooted, restricted.isRooted)
     }

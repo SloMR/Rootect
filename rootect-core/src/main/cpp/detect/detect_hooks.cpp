@@ -274,10 +274,18 @@ void scan_own_code(ScanOutcome& out) {
 
 // Runs every instrumentation check.
 void scan_hooks(ScanOutcome& out) {
+    unsigned before = out.inconclusive;
     scan_maps(out);
+    if (out.inconclusive != before) out.facts |= NF_MAPS_INCONCLUSIVE;
+    before = out.inconclusive;
     scan_threads(out);
+    if (out.inconclusive != before) out.facts |= NF_THREADS_INCONCLUSIVE;
+    before = out.inconclusive;
     scan_tracer(out);
+    if (out.inconclusive != before) out.facts |= NF_TRACER_INCONCLUSIVE;
+    before = out.inconclusive;
     scan_own_code(out);
+    if (out.inconclusive != before) out.facts |= NF_CODE_INCONCLUSIVE;
 }
 
 #ifndef NDEBUG

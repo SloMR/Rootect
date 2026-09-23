@@ -25,6 +25,7 @@ public object Rootect {
     ): RootectReport {
         val signals = mutableListOf<Signal>()
         var inconclusive = 0
+        val inconclusiveSources = mutableSetOf<InconclusiveCheck>()
         var bootStateRead = false
         var nativeSigning: Int? = null
 
@@ -32,6 +33,7 @@ public object Rootect {
         // A wrong answer is evidence; a library that never loaded is a packaging problem.
         if (!NativeBridge.available) {
             inconclusive++
+            inconclusiveSources += InconclusiveCheck.NATIVE_LIBRARY
         } else {
             try {
                 val nonce = Random.nextInt()
@@ -48,6 +50,7 @@ public object Rootect {
                 } else {
                     signals += NativeSignals.decode(scan[0])
                     inconclusive += scan[1]
+                    inconclusiveSources += NativeSignals.inconclusiveSources(scan[2])
                     bootStateRead = scan[2] and NativeSignals.FACT_BOOT_STATE_READ != 0
                     nativeSigning = when {
                         scan[2] and NativeSignals.FACT_SIGNING_MATCH != 0 -> 0
@@ -64,26 +67,33 @@ public object Rootect {
             signals += PackageDetector.detect(context)
         } catch (_: Throwable) {
             inconclusive++
+            inconclusiveSources += InconclusiveCheck.PACKAGE_QUERY
         }
 
         try {
             signals += RuntimeDetector.detect()
         } catch (_: Throwable) {
             inconclusive++
+            inconclusiveSources += InconclusiveCheck.RUNTIME_CHECK
         }
 
         try {
             signals += SettingsDetector.detect(context)
         } catch (_: Throwable) {
             inconclusive++
+            inconclusiveSources += InconclusiveCheck.SETTINGS_READ
         }
 
         try {
             val integrity = IntegrityDetector.detect(context, config, nativeSigning)
             signals += integrity.signals
             inconclusive += integrity.inconclusive
+            if (integrity.inconclusive > 0) {
+                inconclusiveSources += InconclusiveCheck.SIGNING_CHECK
+            }
         } catch (_: Throwable) {
             inconclusive++
+            inconclusiveSources += InconclusiveCheck.INTEGRITY_CHECK
         }
 
         // Opt-in: generating an attested key is slow. Compared against what the properties
@@ -93,6 +103,7 @@ public object Rootect {
                 val attestation = HardwareAttestation.attest()
                 if (attestation == null) {
                     inconclusive++
+                    inconclusiveSources += InconclusiveCheck.HARDWARE_ATTESTATION
                 } else {
                     val propertiesSayLocked = bootStateRead &&
                         signals.none { it.id == SignalId.BOOTLOADER_UNLOCKED }
@@ -100,10 +111,11 @@ public object Rootect {
                 }
             } catch (_: Throwable) {
                 inconclusive++
+                inconclusiveSources += InconclusiveCheck.HARDWARE_ATTESTATION
             }
         }
 
-        return RootectReport(signals.distinctBy { it.id }, inconclusive)
+        return RootectReport(signals.distinctBy { it.id }, inconclusive, inconclusiveSources)
     }
 
     /** Convenience over [analyze] for callers who only want a boolean. */

@@ -9,6 +9,8 @@ public class RootectReport internal constructor(
     public val signals: List<Signal>,
     /** Checks that could not complete. Not evidence, but "found nothing" is weaker if set. */
     public val inconclusiveChecks: Int = 0,
+    /** Which checks could not finish. A check can fail more than once, so this is a set. */
+    public val inconclusiveSources: Set<InconclusiveCheck> = emptySet(),
 ) {
     /** 0..100 across every category. */
     public val score: Int = ScoringEngine.score(signals)

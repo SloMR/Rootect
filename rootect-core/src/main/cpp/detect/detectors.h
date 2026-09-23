@@ -30,6 +30,13 @@ enum NativeFact : unsigned {
     NF_BOOT_STATE_READ = 1u << 0,
     NF_SIGNING_MATCH = 1u << 1,
     NF_SIGNING_MISMATCH = 1u << 2,
+    NF_MOUNT_INCONCLUSIVE = 1u << 3,
+    NF_PATH_INCONCLUSIVE = 1u << 4,
+    NF_SELINUX_INCONCLUSIVE = 1u << 5,
+    NF_MAPS_INCONCLUSIVE = 1u << 6,
+    NF_THREADS_INCONCLUSIVE = 1u << 7,
+    NF_TRACER_INCONCLUSIVE = 1u << 8,
+    NF_CODE_INCONCLUSIVE = 1u << 9,
 };
 
 struct ScanOutcome {
