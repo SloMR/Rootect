@@ -246,6 +246,25 @@ report tampering from `isRooted=false` plus unlocked/unverified boot. Its chain 
 remains `attestation rejected`, regardless of the client’s root claim. Missing attestation
 remains unknown, never a clean result.
 
+An app backend can apply a policy *after* the verifier returns. For example:
+
+```kotlin
+enum class Access { ALLOW, STEP_UP, DENY }
+
+fun decideAccess(verdict: AttestationVerdict, accountNeedsReview: Boolean): Access = when {
+    !verdict.attestationTrusted -> Access.DENY
+    accountNeedsReview -> Access.STEP_UP // Computed from server-side account data.
+    verdict.reportedSignals.any {
+        it == "FRIDA_LIBRARY_MAPPED" || it == "SIGNATURE_MISMATCH"
+    } -> Access.STEP_UP
+    else -> Access.ALLOW
+}
+```
+
+The signal branch can only add friction: a hooked client can omit or forge every signal.
+The hardware gate and any server-side account checks must stand on their own; missing
+client telemetry must never be interpreted as proof of a clean runtime.
+
 ### Fail closed when the server is unavailable
 
 Treat every state except an accepted server response as unable to access the protected operation:
