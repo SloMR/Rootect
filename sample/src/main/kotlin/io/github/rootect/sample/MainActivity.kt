@@ -131,7 +131,8 @@ class MainActivity : Activity() {
             container.addView(
                 messageCard(
                     "Incomplete scan",
-                    "${report.inconclusiveChecks} check(s) could not complete.",
+                    "${report.inconclusiveChecks} check(s) could not complete: " +
+                        report.inconclusiveSources.joinToString { it.name.lowercase().replace('_', ' ') },
                     WARNING_FILL,
                     WARNING_ACCENT,
                 ),
