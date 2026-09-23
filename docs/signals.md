@@ -19,7 +19,7 @@ added; existing ones are not renamed.
 | `SU_BINARY` | STRONG | `su` on system paths, via raw syscalls | Hiding tools unmount these paths for the target app |
 | `MAGISK_ARTIFACT` | STRONG | Magisk, KernelSU and APatch mount entries and files | **Does not survive Magisk DenyList + Shamiko** |
 | `SYSTEM_PARTITION_WRITABLE` | STRONG | Mounts at or below `/system`, `/vendor`, `/product`, `/system_ext` marked writable | Modern root is systemless and does not remount |
-| `KERNEL_ROOT_SYSCALL` | CONCLUSIVE | A positive version from the legacy KernelSU-style `prctl` probe | No positive device test yet. Current KernelSU installs a driver FD through a reboot-syscall magic and talks over ioctl. APatch's SuperCall needs a secret key to use, but a public page-residency side channel can detect its handler on kernels up to 6.6; Rootect implements neither. Magisk does not implement this protocol |
+| `KERNEL_ROOT_SYSCALL` | CONCLUSIVE | A positive version from the legacy KernelSU-style `prctl` probe | No positive device test yet. Current KernelSU installs a driver FD through a reboot-syscall magic and talks over ioctl. APatch's SuperCall needs a secret key to use; a page-residency probe is plausible but still needs a positive APatch device test. Rootect implements neither newer probe. Magisk does not implement this protocol |
 | `ROOT_MANAGER_PACKAGE` | MODERATE | Magisk, KernelSU or APatch manager app installed | Package hiding, renaming, or just uninstalling it |
 
 Hidden root is the honest gap. When root is hidden from an app, the filesystem evidence
