@@ -74,6 +74,7 @@ report.risk                  // SAFE | LOW | MEDIUM | HIGH | CRITICAL
 report.score                 // 0..100
 report.signals               // List<Signal>, deduplicated by id
 report.inconclusiveChecks    // probes that could not complete
+report.inconclusiveSources   // Set<InconclusiveCheck>: which checks could not complete
 
 report.scoreFor(Category.ROOT)   // 0..100 for one category
 report.signalsIn(Category.ROOT)  // that category's evidence
@@ -201,7 +202,9 @@ you can stop after the ones you need — `new RootectConfig("AB:CD:…")` is val
   which check to look at next. Log the `SignalId` server-side.
 - **Choose your own thresholds.** `RiskLevel` bands are a starting point. A bank and a puzzle
   game should not use the same cut-off.
-- **Treat `inconclusiveChecks > 0` as uncertainty.** A denied probe is not a negative result.
+- **Treat `inconclusiveChecks > 0` as uncertainty.** Use `inconclusiveSources` to distinguish,
+  for example, a signing check from a process maps read. The names identify checks, not the
+  underlying error; a denied read and a truncated file may share the same name.
 
 ### Rollups and their trap
 
