@@ -20,6 +20,14 @@ internal object SettingsDetector {
         } catch (_: Settings.SettingNotFoundException) {
             false
         }
-        return if (on) listOf(Signal(SignalId.DEVELOPER_OPTIONS_ENABLED)) else emptyList()
+        val adbOn = Settings.Global.getInt(
+            context.contentResolver,
+            Settings.Global.ADB_ENABLED,
+            0,
+        ) != 0
+        return buildList {
+            if (on) add(Signal(SignalId.DEVELOPER_OPTIONS_ENABLED))
+            if (adbOn) add(Signal(SignalId.ADB_ENABLED))
+        }
     }
 }

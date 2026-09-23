@@ -248,11 +248,25 @@ class RootDetectionTest {
         try {
             // Android writes the toggle only once it is used, and treats absence as off.
             shell("settings delete global $key")
-            assertTrue(SettingsDetector.detect(context).isEmpty())
+            assertTrue(SettingsDetector.detect(context).none {
+                it.id == SignalId.DEVELOPER_OPTIONS_ENABLED
+            })
         } finally {
             if (original == "null") shell("settings delete global $key")
             else shell("settings put global $key $original")
         }
+    }
+
+    @Test
+    fun adbSignalTracksUsbDebuggingSetting() {
+        val enabled = Settings.Global.getInt(
+            context.contentResolver,
+            Settings.Global.ADB_ENABLED,
+            0,
+        ) != 0
+        val found = SettingsDetector.detect(context).any { it.id == SignalId.ADB_ENABLED }
+        assertEquals(enabled, found)
+        assertEquals(Category.ENVIRONMENT, SignalId.ADB_ENABLED.category)
     }
 
     private fun shell(command: String): String =

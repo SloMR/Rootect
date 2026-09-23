@@ -29,6 +29,8 @@ internal object SignalCopy {
             "Verified Boot reports the bootloader is unlocked."
         SignalId.DEVELOPER_OPTIONS_ENABLED ->
             "Developer options are enabled on this device."
+        SignalId.ADB_ENABLED ->
+            "USB debugging is enabled; a computer still needs authorization."
         SignalId.KNOX_WARRANTY_BIT_TRIPPED ->
             "Samsung's Knox warranty fuse reports historical device tampering."
         SignalId.ATTESTATION_BOOT_UNVERIFIED ->
