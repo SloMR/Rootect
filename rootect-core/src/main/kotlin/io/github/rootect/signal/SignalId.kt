@@ -12,7 +12,7 @@ public enum class SignalId(
     ROOT_MANAGER_PACKAGE(Category.ROOT, Confidence.MODERATE),
     SYSTEM_PARTITION_WRITABLE(Category.ROOT, Confidence.STRONG),
 
-    /** prctl(0xDEADBEEF) returned data. A stock kernel rejects it with EINVAL. */
+    /** The legacy KernelSU prctl handler returned a positive version. */
     KERNEL_ROOT_SYSCALL(Category.ROOT, Confidence.CONCLUSIVE),
 
     // ── OS posture ────────────────────────────────────────────────────────────

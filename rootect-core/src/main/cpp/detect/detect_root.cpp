@@ -160,9 +160,9 @@ void scan_selinux(ScanOutcome& out) {
     if (permissive) out.flags |= NS_SELINUX_PERMISSIVE;
 }
 
-// Flags a kernel-side root framework. KernelSU and APatch hook prctl on a magic option and
-// write their version back; a stock kernel fails with EINVAL without touching the buffer.
-// The return value is ignored on purpose — the buffer being written at all is the finding.
+// Legacy KernelSU prctl probe. A stock kernel leaves the version buffer untouched.
+// Current KernelSU and APatch use different interfaces; this does not probe them.
+// The return value is ignored on purpose — the buffer being written is the finding.
 void scan_kernel(ScanOutcome& out) {
     constexpr long kMagic = 0xDEADBEEF;
     constexpr long kCmdGetVersion = 2;
