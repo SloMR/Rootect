@@ -86,15 +86,18 @@ Component** and upload the zip. It validates and then stops, waiting for you.
 - **Publish** is the irreversible one. The artifact reaches Maven Central within minutes and
   appears in search within a few hours.
 
-### 7. Tag the commit
+### 7. Tag the commit and create the GitHub release
 
 ```bash
-git tag -a v<version> -m "v<version>"
-git push origin v<version>
+git tag <version>
+git push origin main <version>
+gh release create <version> --title "<version>" --notes-file <notes.md> --verify-tag
 ```
 
-Tag the commit the artifacts were built from, so a published sources jar can always be traced
-back to the tree that produced it.
+Tags are lightweight with no `v` prefix, like every existing tag. Tag the commit the artifacts
+were built from, so a published sources jar can always be traced back to the tree that produced
+it. The release notes follow the previous release: install snippets, what changed, and links to
+the docs.
 
 ## If validation fails
 
