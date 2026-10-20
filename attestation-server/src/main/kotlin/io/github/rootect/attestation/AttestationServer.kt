@@ -136,7 +136,7 @@ class AttestationVerifier(
         GoogleTrustAnchors,
         { checkedRevocations() },
         now,
-        constraintConfig {
+        constraintConfig = constraintConfig {
             additionalConstraint {
                 AttributeConstraint.STRICT("App identity", true) {
                     policy.matches(it.softwareEnforced.attestationApplicationId)
