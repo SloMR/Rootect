@@ -115,6 +115,16 @@ Java_io_github_rootect_internal_jni_NativeProbes_pathProbe(JNIEnv* env, jobject,
     return rc;
 }
 
+// Debug only. Whether scan_properties reads a Verified Boot state as unlocked.
+extern "C" JNIEXPORT jboolean JNICALL
+Java_io_github_rootect_internal_jni_NativeProbes_bootStateProbe(JNIEnv* env, jobject, jstring jstate) {
+    const char* state = env->GetStringUTFChars(jstate, nullptr);
+    if (state == nullptr) return JNI_FALSE;
+    bool unlocked = rootect::boot_state_unlocked(state);
+    env->ReleaseStringUTFChars(jstate, state);
+    return unlocked ? JNI_TRUE : JNI_FALSE;
+}
+
 // Debug only. Instrumentation flags scan_maps would set for a mapped file path.
 extern "C" JNIEXPORT jint JNICALL
 Java_io_github_rootect_internal_jni_NativeProbes_mapsProbe(JNIEnv* env, jobject, jstring jpath) {

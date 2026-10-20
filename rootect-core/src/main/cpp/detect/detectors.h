@@ -59,6 +59,9 @@ void scan_emulator(ScanOutcome& out);
 unsigned maps_probe(const char* path);
 #endif
 
+// True when a ro.boot.verifiedbootstate value does not describe a locked bootloader.
+bool boot_state_unlocked(const char* verified_boot_state);
+
 // 0 match, 1 mismatch, -1 unreadable.
 int signing_matches(const char* apk_path, const char* expected_hex, int sdk);
 

@@ -41,7 +41,7 @@ already knows is the cheaper trade.
 | Signal | Confidence | Catches | Limits |
 |---|---|---|---|
 | `SELINUX_PERMISSIVE` | STRONG | SELinux not enforcing | Not a root signal — custom ROMs run permissive legitimately |
-| `BOOTLOADER_UNLOCKED` | STRONG | Three boot-state properties (including any non-green Verified Boot state) | Properties are rewritable on a rooted device |
+| `BOOTLOADER_UNLOCKED` | STRONG | Three boot-state properties (including a Verified Boot state other than green or yellow) | Properties are rewritable on a rooted device |
 | `KNOX_WARRANTY_BIT_TRIPPED` | STRONG | Samsung reports its persistent Knox warranty fuse as tripped | Samsung only; the local property is rewritable, so Knox server attestation is authoritative |
 | `TEST_KEYS_BUILD` | WEAK | `ro.build.tags` containing `test-keys` (not a signature verification) | Common on honest custom ROMs, hence `WEAK` |
 | `DEVELOPER_OPTIONS_ENABLED` | WEAK | The Developer options toggle is on, read from `Settings.Global` | Common on honest devices and one JVM hook from silent; posture only, never feeds `isRooted` |

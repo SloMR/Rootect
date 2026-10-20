@@ -105,7 +105,6 @@ void scan_properties(ScanOutcome& out) {
     auto tags = ROOTECT_HIDE("ro.build.tags");
     auto warranty = ROOTECT_HIDE("ro.boot.warranty_bit");
 
-    auto green = ROOTECT_HIDE("green");
     auto zero = ROOTECT_HIDE("0");
     auto one = ROOTECT_HIDE("1");
     auto unlocked = ROOTECT_HIDE("unlocked");
@@ -116,7 +115,7 @@ void scan_properties(ScanOutcome& out) {
 
     if (prop_get(vbs.c_str(), value)) {
         answered = true;
-        if (!field_equals(value, green.c_str())) out.flags |= NS_BOOTLOADER_UNLOCKED;
+        if (boot_state_unlocked(value)) out.flags |= NS_BOOTLOADER_UNLOCKED;
     }
     if (prop_get(locked.c_str(), value)) {
         answered = true;
@@ -174,6 +173,16 @@ void scan_kernel(ScanOutcome& out) {
 }
 
 } // namespace
+
+// Verified Boot reports green for a locked device on the OEM key and yellow for a locked
+// device on a user-enrolled key. Only those two mean locked; orange
+// is unlocked, and a value this list does not know keeps flagging rather than passing.
+bool boot_state_unlocked(const char* verified_boot_state) {
+    auto green = ROOTECT_HIDE("green");
+    auto yellow = ROOTECT_HIDE("yellow");
+    return !field_equals(verified_boot_state, green.c_str()) &&
+           !field_equals(verified_boot_state, yellow.c_str());
+}
 
 // Runs every root check.
 void scan_root(ScanOutcome& out) {

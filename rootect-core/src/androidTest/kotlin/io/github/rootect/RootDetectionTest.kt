@@ -14,6 +14,7 @@ import io.github.rootect.internal.jni.NativeSignals
 import io.github.rootect.signal.Category
 import io.github.rootect.signal.SignalId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -61,6 +62,15 @@ class RootDetectionTest {
             SignalId.FRIDA_LIBRARY_MAPPED in ids("/system/lib64/libgadget.so"))
         assertTrue("XposedBridge missed",
             SignalId.XPOSED_FRAMEWORK_PRESENT in ids("/system/framework/XposedBridge.jar"))
+    }
+
+    @Test
+    fun verifiedBootStateReadsYellowAsLocked() {
+        // Yellow is a locked bootloader on a user-enrolled key.
+        assertFalse(NativeProbes.bootStateProbe("green"))
+        assertFalse("yellow read as unlocked", NativeProbes.bootStateProbe("yellow"))
+        assertTrue(NativeProbes.bootStateProbe("orange"))
+        assertTrue("an unknown state must keep flagging", NativeProbes.bootStateProbe("violet"))
     }
 
     @Test
