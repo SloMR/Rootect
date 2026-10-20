@@ -4,6 +4,7 @@ import com.android.keyattestation.verifier.AttestationApplicationId
 import com.android.keyattestation.verifier.AttributeConstraint
 import com.android.keyattestation.verifier.GoogleTrustAnchors
 import com.android.keyattestation.verifier.InstantSource
+import com.android.keyattestation.verifier.RootOfTrust
 import com.android.keyattestation.verifier.VerificationResult
 import com.android.keyattestation.verifier.VerifiedBootState
 import com.android.keyattestation.verifier.Verifier
@@ -94,10 +95,31 @@ private fun fetchRevocations(url: URL, timeoutMs: Int): Set<String> {
     }
 }
 
-class AttestationPolicy(packageName: String, signerSha256: ByteArray, minimumVersion: Long) {
+class AttestationPolicy(
+    packageName: String,
+    signerSha256: ByteArray,
+    minimumVersion: Long,
+    trustedBootKeys: Set<String> = emptySet(),
+) {
     private val packageName = packageName.also { require(it.isNotBlank()) }
     private val signerSha256 = signerSha256.copyOf().also { require(it.size == 32) }
     private val minimumVersion = minimumVersion.also { require(it >= 0) }
+    private val trustedBootKeys = trustedBootKeys
+        .map { it.replace(":", "").lowercase() }
+        .toSet()
+        .also { keys -> require(keys.all { it.hexBytes(32) != null }) }
+
+    // Verified is the vendor's own OS. SelfSigned is trusted only on a verified boot key the
+    // listed, such as an official GrapheneOS key; any other self-signed OS is not.
+    internal fun bootTrusted(rootOfTrust: RootOfTrust?): Boolean =
+        rootOfTrust != null &&
+            rootOfTrust.deviceLocked &&
+            when (rootOfTrust.verifiedBootState) {
+                VerifiedBootState.VERIFIED -> true
+                VerifiedBootState.SELF_SIGNED ->
+                    rootOfTrust.verifiedBootKey.toByteArray().toHex() in trustedBootKeys
+                else -> false
+            }
 
     internal fun matches(id: AttestationApplicationId?): Boolean =
         id != null &&
@@ -142,6 +164,11 @@ class AttestationVerifier(
                     policy.matches(it.softwareEnforced.attestationApplicationId)
                 }
             }
+            additionalConstraint {
+                AttributeConstraint.STRICT("Boot state", true) {
+                    policy.bootTrusted(it.hardwareEnforced.rootOfTrust)
+                }
+            }
         },
     )
 
@@ -171,7 +198,8 @@ class AttestationVerifier(
         val success = result as? VerificationResult.Success
         val trusted = success != null &&
             success.deviceLocked &&
-            success.verifiedBootState == VerifiedBootState.VERIFIED
+            (success.verifiedBootState == VerifiedBootState.VERIFIED ||
+                success.verifiedBootState == VerifiedBootState.SELF_SIGNED)
         return verdictForHardware(trusted, count, report)
     }
 
@@ -352,6 +380,12 @@ fun main() {
             ?: error("ROOTECT_SIGNING_SHA256 must contain 64 hexadecimal characters"),
         requiredEnvironment("ROOTECT_MIN_VERSION").toLongOrNull()
             ?: error("ROOTECT_MIN_VERSION must be a non-negative integer"),
+        System.getenv("ROOTECT_TRUSTED_BOOT_KEYS")
+            ?.split(",")
+            ?.map(String::trim)
+            ?.filter(String::isNotEmpty)
+            ?.toSet()
+            .orEmpty(),
     )
     val ttl = System.getenv("ROOTECT_CHALLENGE_TTL_SECONDS")?.toLongOrNull() ?: 120
     val store = InMemoryChallengeStore(Duration.ofSeconds(ttl))

@@ -166,7 +166,7 @@ Reject on the first failure:
 | 6 | Attestation and KeyMint levels match and are hardware-backed | Rejects software or inconsistent claims |
 | 7 | Key origin is hardware-generated | Rejects imported keys |
 | 8 | Hardware `rootOfTrust` is present | Missing evidence fails closed |
-| 9 | Boot is locked and `Verified` | Enforces device posture |
+| 9 | Boot is locked and `Verified`, or `SelfSigned` on a key you trust | Enforces device posture |
 | 10 | Package, version and signer match | Binds evidence to your app |
 
 **There are currently two roots in force.** The older RSA-4096 root, and *Key Attestation
@@ -202,7 +202,11 @@ not published as a Maven artifact. Pass its directory when building:
 ./gradlew :attestation-server:run -PkeyAttestationPath=/path/to/keyattestation
 ```
 
-Set `ROOTECT_APP_ID`, `ROOTECT_SIGNING_SHA256` and `ROOTECT_MIN_VERSION` before starting it. The
+Set `ROOTECT_APP_ID`, `ROOTECT_SIGNING_SHA256` and `ROOTECT_MIN_VERSION` before starting it.
+To accept a locked `SelfSigned` boot, such as GrapheneOS, list the verified boot key digests you
+trust in `ROOTECT_TRUSTED_BOOT_KEYS`, comma-separated hex; GrapheneOS publishes its keys in its
+[attestation compatibility guide](https://grapheneos.org/articles/attestation-compatibility-guide).
+Without it, only a locked `Verified` boot is trusted. The
 default revocation source caches Google's list for an hour, sets connect and read timeouts, keeps serving
 the last good list through a transient Google outage, and returns HTTP 503 only when it has no
 list recent enough to trust.

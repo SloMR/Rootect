@@ -3,6 +3,8 @@ package io.github.rootect.attestation
 import com.android.keyattestation.verifier.AttestationApplicationId
 import com.android.keyattestation.verifier.AttestationPackageInfo
 import com.android.keyattestation.verifier.GoogleTrustAnchors
+import com.android.keyattestation.verifier.RootOfTrust
+import com.android.keyattestation.verifier.VerifiedBootState
 import com.google.gson.Gson
 import com.google.protobuf.ByteString
 import io.ktor.client.request.post
@@ -42,7 +44,28 @@ class AttestationServerTest {
         assertFails { AttestationPolicy("", signer, 2) }
         assertFails { AttestationPolicy("app", ByteArray(31), 2) }
         assertFails { AttestationPolicy("app", signer, -1) }
+        assertFails { AttestationPolicy("app", signer, 2, setOf("abc")) }
     }
+
+    @Test
+    fun selfSignedBootIsTrustedOnlyOnAConfiguredKey() {
+        val key = ByteArray(32) { 7 }
+        val trusting = AttestationPolicy("app", signer, 2, setOf(key.toHexForTest().uppercase()))
+        fun root(state: VerifiedBootState, locked: Boolean = true, bootKey: ByteArray = key) =
+            RootOfTrust(ByteString.copyFrom(bootKey), locked, state)
+
+        assertTrue(trusting.bootTrusted(root(VerifiedBootState.VERIFIED)))
+        assertTrue(trusting.bootTrusted(root(VerifiedBootState.SELF_SIGNED)))
+        assertFalse(trusting.bootTrusted(root(VerifiedBootState.SELF_SIGNED, locked = false)))
+        assertFalse(
+            trusting.bootTrusted(root(VerifiedBootState.SELF_SIGNED, bootKey = ByteArray(32))),
+        )
+        assertFalse(trusting.bootTrusted(root(VerifiedBootState.UNVERIFIED)))
+        assertFalse(trusting.bootTrusted(null))
+        assertFalse(policy.bootTrusted(root(VerifiedBootState.SELF_SIGNED)))
+    }
+
+    private fun ByteArray.toHexForTest(): String = joinToString("") { "%02x".format(it) }
 
     @Test
     fun malformedInputFailsBeforeChallengeConsumption() {
