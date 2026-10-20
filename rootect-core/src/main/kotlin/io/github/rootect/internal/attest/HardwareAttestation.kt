@@ -21,6 +21,12 @@ internal object HardwareAttestation {
     private const val IDX_CHALLENGE = 4
     private const val IDX_TEE_ENFORCED = 7
 
+    // Universal tag numbers of the fields read below.
+    private const val TAG_BOOLEAN = 1L
+    private const val TAG_OCTET_STRING = 4L
+    private const val TAG_ENUMERATED = 10L
+    private const val TAG_SEQUENCE = 16L
+
     // AuthorizationList tag for rootOfTrust.
     private const val TAG_ROOT_OF_TRUST = 704L
 
@@ -112,6 +118,12 @@ internal object HardwareAttestation {
         val inner = Der(raw).next()?.reader()?.next() ?: return null
         val fields = inner.reader().all()
         if (fields.size <= IDX_TEE_ENFORCED) return null
+        // A field of the wrong type is a malformed record, not a value to coerce.
+        if (fields[IDX_SECURITY_LEVEL].tag != TAG_ENUMERATED ||
+            fields[IDX_KEYMINT_SECURITY_LEVEL].tag != TAG_ENUMERATED ||
+            fields[IDX_CHALLENGE].tag != TAG_OCTET_STRING ||
+            fields[IDX_TEE_ENFORCED].tag != TAG_SEQUENCE
+        ) return null
 
         val attestationSecurityLevel = fields[IDX_SECURITY_LEVEL].asInt()
         val keyMintSecurityLevel = fields[IDX_KEYMINT_SECURITY_LEVEL].asInt()
@@ -132,6 +144,9 @@ internal object HardwareAttestation {
             ?: return null
 
         if (rootOfTrust.size <= IDX_BOOT_STATE) return null
+        if (rootOfTrust[IDX_DEVICE_LOCKED].tag != TAG_BOOLEAN ||
+            rootOfTrust[IDX_BOOT_STATE].tag != TAG_ENUMERATED
+        ) return null
         val verifiedBootState = rootOfTrust[IDX_BOOT_STATE].asInt()
         if (verifiedBootState !in BOOT_STATE_VERIFIED..BOOT_STATE_FAILED) return null
 

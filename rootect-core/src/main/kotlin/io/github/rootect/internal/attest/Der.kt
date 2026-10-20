@@ -58,8 +58,12 @@ internal class Der(
         /** Reader over this element's contents. */
         fun reader(): Der = Der(src, contentStart, contentEnd)
 
-        /** Contents interpreted as an unsigned integer or enumerated value. */
+        /**
+         * Contents interpreted as an unsigned integer or enumerated value, or -1 when they are
+         * empty or wider than four bytes, which would otherwise wrap into a small value.
+         */
         fun asInt(): Int {
+            if (contentEnd - contentStart !in 1..4) return -1
             var value = 0
             for (i in contentStart until contentEnd) {
                 value = (value shl 8) or (src[i].toInt() and 0xFF)

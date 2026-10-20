@@ -70,6 +70,15 @@ class HardwareAttestationTest {
     }
 
     @Test
+    fun `a security level that is not an enumerated value is rejected`() {
+        assertNull(
+            HardwareAttestation.parseExtension(
+                keyDescription(1, 1, withRoot = true, levelTag = 0x02),
+            ),
+        )
+    }
+
+    @Test
     fun `an out-of-range boot state is rejected`() {
         assertNull(
             HardwareAttestation.parseExtension(keyDescription(1, 1, withRoot = true, bootState = 7)),
@@ -82,6 +91,7 @@ class HardwareAttestationTest {
         withRoot: Boolean,
         bootState: Int = 0,
         locked: Boolean = true,
+        levelTag: Int = 0x0A,
     ): ByteArray {
         val root = if (withRoot) {
             context(
@@ -97,9 +107,9 @@ class HardwareAttestationTest {
         }
         val description = sequence(
             integer(4),
-            integer(attestationLevel, 0x0A),
+            integer(attestationLevel, levelTag),
             integer(4),
-            integer(keyMintLevel, 0x0A),
+            integer(keyMintLevel, levelTag),
             element(0x04, ByteArray(32) { it.toByte() }),
             element(0x04, byteArrayOf()),
             sequence(),
