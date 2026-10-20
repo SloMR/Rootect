@@ -116,6 +116,7 @@ hookable; the server path is authoritative. See [attestation.md](attestation.md)
 | Signal | Confidence | Catches |
 |---|---|---|
 | `ATTESTATION_BOOT_UNVERIFIED` | STRONG | Secure hardware reporting an unlocked or unverified device |
+| `ATTESTATION_SELF_SIGNED_BOOT` | WEAK | Secure hardware reporting a locked device booting an OS on a user-enrolled key |
 | `ATTESTATION_SOFTWARE_ONLY` | MODERATE | A parsed record reports a software security level; unavailable evidence is inconclusive instead |
 | `ATTESTATION_CONTRADICTS_PROPERTIES` | CONCLUSIVE | Properties claiming a locked device while hardware disagrees |
 

@@ -31,6 +31,7 @@ internal object HardwareAttestation {
     private const val SECURITY_LEVEL_SOFTWARE = 0
     private const val SECURITY_LEVEL_STRONGBOX = 2
     private const val BOOT_STATE_VERIFIED = 0
+    private const val BOOT_STATE_SELF_SIGNED = 1
     private const val BOOT_STATE_FAILED = 3
     private const val CHALLENGE_SIZE = 32
 
@@ -44,6 +45,7 @@ internal object HardwareAttestation {
         val isSoftwareOnly: Boolean get() = securityLevel == SECURITY_LEVEL_SOFTWARE
         val hasRootOfTrust: Boolean get() = deviceLocked != null && verifiedBootState != null
         val isBootVerified: Boolean get() = verifiedBootState == BOOT_STATE_VERIFIED
+        val isBootSelfSigned: Boolean get() = verifiedBootState == BOOT_STATE_SELF_SIGNED
     }
 
     /** Generates a throwaway attested key and reads the statement out of its certificate. */
@@ -148,7 +150,13 @@ internal object HardwareAttestation {
     fun signals(result: Result, propertiesSayLocked: Boolean): List<Signal> = buildList {
         if (result.isSoftwareOnly) add(Signal(SignalId.ATTESTATION_SOFTWARE_ONLY))
 
-        if (result.hasRootOfTrust && (result.deviceLocked == false || !result.isBootVerified)) {
+        if (!result.hasRootOfTrust) return@buildList
+
+        // SelfSigned on a locked device is an OS on a user-enrolled key.
+        // Rootect cannot tell whose key it is, so it is posture rather than an unverified boot.
+        if (result.deviceLocked == true && result.isBootSelfSigned) {
+            add(Signal(SignalId.ATTESTATION_SELF_SIGNED_BOOT))
+        } else if (result.deviceLocked == false || !result.isBootVerified) {
             add(Signal(SignalId.ATTESTATION_BOOT_UNVERIFIED))
 
             // The properties claim a locked, verified device while the hardware says

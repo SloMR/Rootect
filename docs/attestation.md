@@ -143,8 +143,8 @@ never clean. The local report is untrusted: use it to tighten policy, never as t
 Rootect.analyze(context, RootectConfig(hardwareAttestation = true))
 ```
 
-That emits `ATTESTATION_BOOT_UNVERIFIED`, `ATTESTATION_SOFTWARE_ONLY` and
-`ATTESTATION_CONTRADICTS_PROPERTIES` as ordinary signals. Useful for telemetry — but it is a
+That emits `ATTESTATION_BOOT_UNVERIFIED`, `ATTESTATION_SELF_SIGNED_BOOT`,
+`ATTESTATION_SOFTWARE_ONLY` and `ATTESTATION_CONTRADICTS_PROPERTIES` as ordinary signals. Useful for telemetry — but it is a
 *local* result, so it carries local trust. It is not a substitute for the round trip.
 
 Local parsing checks the nonce and extension shape, not signatures, roots or revocation.
