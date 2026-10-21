@@ -32,6 +32,9 @@ public enum class SignalId(
     /** Secure hardware reports the bootloader unlocked or boot unverified. */
     ATTESTATION_BOOT_UNVERIFIED(Category.ENVIRONMENT, Confidence.STRONG),
 
+    /** Secure hardware reports a locked device booting an OS signed with a user-enrolled key. */
+    ATTESTATION_SELF_SIGNED_BOOT(Category.ENVIRONMENT, Confidence.WEAK),
+
     /** No TEE-backed attestation available, so the answer came from software. */
     ATTESTATION_SOFTWARE_ONLY(Category.ENVIRONMENT, Confidence.MODERATE),
 

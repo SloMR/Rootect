@@ -36,6 +36,13 @@ class DerTest {
     }
 
     @Test
+    fun `an integer wider than four bytes does not wrap into a small value`() {
+        // 0x01_00000002 would otherwise shift its high byte out and read as 2.
+        assertEquals(-1, der(0x0A, 0x05, 0x01, 0x00, 0x00, 0x00, 0x02).next()!!.asInt())
+        assertEquals(-1, der(0x0A, 0x00).next()!!.asInt())
+    }
+
+    @Test
     fun `an element claiming more content than exists yields null`() {
         assertNull(der(0x30, 0x08, 0x01, 0x02).next())
     }

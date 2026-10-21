@@ -22,6 +22,9 @@ internal object NativeProbes {
     /** How many signal bits the native side defines. */
     external fun nativeSignalCount(): Int
 
+    /** Whether scan_properties reads a Verified Boot state as unlocked. */
+    external fun bootStateProbe(state: String): Boolean
+
     /** Instrumentation flags scan_maps would set for a mapped file path. */
     external fun mapsProbe(path: String): Int
 }

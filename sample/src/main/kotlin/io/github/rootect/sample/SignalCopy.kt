@@ -35,6 +35,8 @@ internal object SignalCopy {
             "Samsung's Knox warranty fuse reports historical device tampering."
         SignalId.ATTESTATION_BOOT_UNVERIFIED ->
             "The device's secure hardware reports the bootloader unlocked or boot unverified."
+        SignalId.ATTESTATION_SELF_SIGNED_BOOT ->
+            "The device is locked and runs an OS signed with a user-enrolled key, not the OEM's."
         SignalId.ATTESTATION_SOFTWARE_ONLY ->
             "No hardware-backed attestation — the answer came from software and is weaker."
         SignalId.ATTESTATION_CONTRADICTS_PROPERTIES ->

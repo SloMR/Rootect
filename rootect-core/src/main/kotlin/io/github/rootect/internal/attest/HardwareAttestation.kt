@@ -21,6 +21,12 @@ internal object HardwareAttestation {
     private const val IDX_CHALLENGE = 4
     private const val IDX_TEE_ENFORCED = 7
 
+    // Universal tag numbers of the fields read below.
+    private const val TAG_BOOLEAN = 1L
+    private const val TAG_OCTET_STRING = 4L
+    private const val TAG_ENUMERATED = 10L
+    private const val TAG_SEQUENCE = 16L
+
     // AuthorizationList tag for rootOfTrust.
     private const val TAG_ROOT_OF_TRUST = 704L
 
@@ -31,6 +37,7 @@ internal object HardwareAttestation {
     private const val SECURITY_LEVEL_SOFTWARE = 0
     private const val SECURITY_LEVEL_STRONGBOX = 2
     private const val BOOT_STATE_VERIFIED = 0
+    private const val BOOT_STATE_SELF_SIGNED = 1
     private const val BOOT_STATE_FAILED = 3
     private const val CHALLENGE_SIZE = 32
 
@@ -44,6 +51,7 @@ internal object HardwareAttestation {
         val isSoftwareOnly: Boolean get() = securityLevel == SECURITY_LEVEL_SOFTWARE
         val hasRootOfTrust: Boolean get() = deviceLocked != null && verifiedBootState != null
         val isBootVerified: Boolean get() = verifiedBootState == BOOT_STATE_VERIFIED
+        val isBootSelfSigned: Boolean get() = verifiedBootState == BOOT_STATE_SELF_SIGNED
     }
 
     /** Generates a throwaway attested key and reads the statement out of its certificate. */
@@ -110,6 +118,12 @@ internal object HardwareAttestation {
         val inner = Der(raw).next()?.reader()?.next() ?: return null
         val fields = inner.reader().all()
         if (fields.size <= IDX_TEE_ENFORCED) return null
+        // A field of the wrong type is a malformed record, not a value to coerce.
+        if (fields[IDX_SECURITY_LEVEL].tag != TAG_ENUMERATED ||
+            fields[IDX_KEYMINT_SECURITY_LEVEL].tag != TAG_ENUMERATED ||
+            fields[IDX_CHALLENGE].tag != TAG_OCTET_STRING ||
+            fields[IDX_TEE_ENFORCED].tag != TAG_SEQUENCE
+        ) return null
 
         val attestationSecurityLevel = fields[IDX_SECURITY_LEVEL].asInt()
         val keyMintSecurityLevel = fields[IDX_KEYMINT_SECURITY_LEVEL].asInt()
@@ -130,6 +144,9 @@ internal object HardwareAttestation {
             ?: return null
 
         if (rootOfTrust.size <= IDX_BOOT_STATE) return null
+        if (rootOfTrust[IDX_DEVICE_LOCKED].tag != TAG_BOOLEAN ||
+            rootOfTrust[IDX_BOOT_STATE].tag != TAG_ENUMERATED
+        ) return null
         val verifiedBootState = rootOfTrust[IDX_BOOT_STATE].asInt()
         if (verifiedBootState !in BOOT_STATE_VERIFIED..BOOT_STATE_FAILED) return null
 
@@ -148,7 +165,13 @@ internal object HardwareAttestation {
     fun signals(result: Result, propertiesSayLocked: Boolean): List<Signal> = buildList {
         if (result.isSoftwareOnly) add(Signal(SignalId.ATTESTATION_SOFTWARE_ONLY))
 
-        if (result.hasRootOfTrust && (result.deviceLocked == false || !result.isBootVerified)) {
+        if (!result.hasRootOfTrust) return@buildList
+
+        // SelfSigned on a locked device is an OS on a user-enrolled key.
+        // Rootect cannot tell whose key it is, so it is posture rather than an unverified boot.
+        if (result.deviceLocked == true && result.isBootSelfSigned) {
+            add(Signal(SignalId.ATTESTATION_SELF_SIGNED_BOOT))
+        } else if (result.deviceLocked == false || !result.isBootVerified) {
             add(Signal(SignalId.ATTESTATION_BOOT_UNVERIFIED))
 
             // The properties claim a locked, verified device while the hardware says

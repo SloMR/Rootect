@@ -43,6 +43,42 @@ class HardwareAttestationTest {
     }
 
     @Test
+    fun `a locked self-signed boot is posture not an unverified boot`() {
+        val result = HardwareAttestation.parseExtension(
+            keyDescription(1, 1, withRoot = true, bootState = 1),
+        )
+
+        assertEquals(
+            listOf(SignalId.ATTESTATION_SELF_SIGNED_BOOT),
+            HardwareAttestation.signals(result!!, propertiesSayLocked = true).map { it.id },
+        )
+    }
+
+    @Test
+    fun `an unlocked self-signed boot stays unverified`() {
+        val result = HardwareAttestation.parseExtension(
+            keyDescription(1, 1, withRoot = true, bootState = 1, locked = false),
+        )
+
+        assertEquals(
+            listOf(
+                SignalId.ATTESTATION_BOOT_UNVERIFIED,
+                SignalId.ATTESTATION_CONTRADICTS_PROPERTIES,
+            ),
+            HardwareAttestation.signals(result!!, propertiesSayLocked = true).map { it.id },
+        )
+    }
+
+    @Test
+    fun `a security level that is not an enumerated value is rejected`() {
+        assertNull(
+            HardwareAttestation.parseExtension(
+                keyDescription(1, 1, withRoot = true, levelTag = 0x02),
+            ),
+        )
+    }
+
+    @Test
     fun `an out-of-range boot state is rejected`() {
         assertNull(
             HardwareAttestation.parseExtension(keyDescription(1, 1, withRoot = true, bootState = 7)),
@@ -54,13 +90,15 @@ class HardwareAttestationTest {
         keyMintLevel: Int,
         withRoot: Boolean,
         bootState: Int = 0,
+        locked: Boolean = true,
+        levelTag: Int = 0x0A,
     ): ByteArray {
         val root = if (withRoot) {
             context(
                 704,
                 sequence(
                     element(0x04, byteArrayOf(1)),
-                    element(0x01, byteArrayOf(0xFF.toByte())),
+                    element(0x01, byteArrayOf(if (locked) 0xFF.toByte() else 0)),
                     integer(bootState, 0x0A),
                 ),
             )
@@ -69,9 +107,9 @@ class HardwareAttestationTest {
         }
         val description = sequence(
             integer(4),
-            integer(attestationLevel, 0x0A),
+            integer(attestationLevel, levelTag),
             integer(4),
-            integer(keyMintLevel, 0x0A),
+            integer(keyMintLevel, levelTag),
             element(0x04, ByteArray(32) { it.toByte() }),
             element(0x04, byteArrayOf()),
             sequence(),
