@@ -384,6 +384,10 @@ fun main() {
             ?.split(",")
             ?.map(String::trim)
             ?.filter(String::isNotEmpty)
+            ?.onEach {
+                it.hexBytes(32)
+                    ?: error("ROOTECT_TRUSTED_BOOT_KEYS must be comma-separated 64-character hex keys")
+            }
             ?.toSet()
             .orEmpty(),
     )
