@@ -40,6 +40,7 @@ internal object HardwareAttestation {
     private const val BOOT_STATE_SELF_SIGNED = 1
     private const val BOOT_STATE_FAILED = 3
     private const val CHALLENGE_SIZE = 32
+    private const val MAX_EXTENSION_BYTES = 64 * 1024
 
     /** What the attestation record said, or null if it could not be parsed. */
     data class Result(
@@ -62,12 +63,19 @@ internal object HardwareAttestation {
     }
 
     internal fun parseChain(chain: List<X509Certificate>, challenge: ByteArray): Result? {
-        if (challenge.size != CHALLENGE_SIZE || chain.isEmpty()) return null
-        val hasExtension = chain.map {
-            runCatching { it.getExtensionValue(ATTESTATION_OID) != null }.getOrDefault(false)
-        }
-        if (!hasExtension.first() || hasExtension.drop(1).any { it }) return null
-        val parsed = parse(chain.first()) ?: return null
+        if (chain.size !in 1..8) return null
+        val extensions = runCatching { chain.map { it.getExtensionValue(ATTESTATION_OID) } }
+            .getOrNull() ?: return null
+        return parseChainExtensions(extensions, challenge)
+    }
+
+    // Android returns leaf first. Select the extension nearest the root; a descendant
+    // can contain an attacker-added extension. This does not authenticate the chain.
+    internal fun parseChainExtensions(extensions: List<ByteArray?>, challenge: ByteArray): Result? {
+        if (challenge.size != CHALLENGE_SIZE || extensions.size !in 1..8) return null
+        val raw = extensions.lastOrNull { it != null } ?: return null
+        if (raw.size > MAX_EXTENSION_BYTES) return null
+        val parsed = parseExtension(raw) ?: return null
         return parsed.takeIf { it.challenge.contentEquals(challenge) }
     }
 
@@ -105,12 +113,6 @@ internal object HardwareAttestation {
         } finally {
             runCatching { keyStore.deleteEntry(alias) }
         }
-    }
-
-    /** Pulls the security level and root of trust out of the attestation extension. */
-    private fun parse(cert: X509Certificate): Result? {
-        val raw = cert.getExtensionValue(ATTESTATION_OID) ?: return null
-        return parseExtension(raw)
     }
 
     internal fun parseExtension(raw: ByteArray): Result? {
