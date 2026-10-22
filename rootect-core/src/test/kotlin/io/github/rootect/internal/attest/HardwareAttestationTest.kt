@@ -8,6 +8,41 @@ import org.junit.Test
 
 class HardwareAttestationTest {
 
+    private val challenge = ByteArray(32) { it.toByte() }
+
+    @Test
+    fun `extension need not be in the leaf`() {
+        val result = HardwareAttestation.parseChainExtensions(
+            listOf(null, keyDescription(1, 1, true), null), challenge,
+        )
+        assertEquals(1, result!!.securityLevel)
+    }
+
+    @Test
+    fun `descendant extension cannot override ancestor`() {
+        val result = HardwareAttestation.parseChainExtensions(
+            listOf(keyDescription(2, 2, true), keyDescription(0, 0, false), null), challenge,
+        )
+        assertTrue(result!!.isSoftwareOnly)
+    }
+
+    @Test
+    fun `malformed ancestor cannot fall back to valid leaf`() {
+        assertNull(HardwareAttestation.parseChainExtensions(
+            listOf(keyDescription(1, 1, true), byteArrayOf(4, 0), null), challenge,
+        ))
+    }
+
+    @Test
+    fun `wrong challenge and missing extension are unknown`() {
+        assertNull(HardwareAttestation.parseChainExtensions(
+            listOf(keyDescription(1, 1, true)), ByteArray(32),
+        ))
+        assertNull(HardwareAttestation.parseChainExtensions(listOf(null, null), challenge))
+        assertNull(HardwareAttestation.parseChainExtensions(emptyList(), challenge))
+        assertNull(HardwareAttestation.parseChainExtensions(List(9) { null }, challenge))
+    }
+
     @Test
     fun `software-only record remains usable without root of trust`() {
         val result = HardwareAttestation.parseExtension(keyDescription(0, 0, withRoot = false))
